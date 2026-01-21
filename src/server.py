@@ -1,6 +1,7 @@
 from mcp.server.fastmcp import FastMCP
 from src.graph_db import GraphManager
 from src.schema import KnowledgeGraphUpdate
+from src.search import perform_search
 import logging
 
 # Initialize Logging
@@ -29,7 +30,6 @@ def add_knowledge(data: KnowledgeGraphUpdate) -> str:
     count_entities = 0
     with db.driver.session() as session:
         for entity in data.entities:
-            # We use f-string for labels (safe because Pydantic validates the Enum)
             cypher = f"""
             MERGE (e:{entity.label} {{name: $name}})
             ON CREATE SET e += $props
@@ -55,7 +55,6 @@ def add_knowledge(data: KnowledgeGraphUpdate) -> str:
             MERGE (doc)-[:MENTIONS]->(source)
             MERGE (doc)-[:MENTIONS]->(target)
             """
-            
             try:
                 session.run(cypher, 
                             source_name=rel.source, 
@@ -67,6 +66,22 @@ def add_knowledge(data: KnowledgeGraphUpdate) -> str:
                 logger.error(f"Failed to link {rel.source} -> {rel.target}: {e}")
 
     return f"Successfully ingested {count_entities} entities and {count_rels} relationships from {data.source_url}"
+
+@mcp.tool()
+def search_web(query: str) -> str:
+    """
+    Searches the web for information using Tavily.
+    Returns the top 3 results formatted as a string.
+    """
+    results = perform_search(query)
+    
+    formatted_output = f"--- Search Results for '{query}' ---\n"
+    for r in results:
+        formatted_output += f"Source: {r['title']} ({r['url']})\n"
+        formatted_output += f"Content: {r['content']}\n"
+        formatted_output += "-" * 20 + "\n"
+        
+    return formatted_output
 
 if __name__ == "__main__":
     mcp.run()
