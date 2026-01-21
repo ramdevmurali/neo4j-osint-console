@@ -6,6 +6,8 @@ from src.search import perform_search
 from src.graph_ops import insert_knowledge
 from src.schema import KnowledgeGraphUpdate
 import logging
+from langgraph.checkpoint.memory import MemorySaver # <--- NEW IMPORT
+
 
 # Setup Logger
 logging.basicConfig(level=logging.INFO)
@@ -38,28 +40,30 @@ def save_to_graph(data: KnowledgeGraphUpdate):
         data = KnowledgeGraphUpdate(**data)
     return insert_knowledge(data)
 
-# 3. Create the Agent
-tools = [search_tavily, save_to_graph]
-agent_executor = create_react_agent(llm, tools)
+# ... (Previous imports remain the same) ...
+from langgraph.checkpoint.memory import MemorySaver # <--- NEW IMPORT
 
-def run_agent(user_input: str):
-    """
-    Entry point to run the agent.
-    """
-    logger.info(f"🤖 Agent Task: {user_input}")
-    
-    # Run the graph
-    for step in agent_executor.stream(
-        {"messages": [("user", user_input)]},
-        stream_mode="values"
-    ):
-        last_msg = step["messages"][-1]
-        print(f"\n--- {last_msg.type.upper()} ---")
-        
-        # We restore the simple print logic that worked for you
-        if last_msg.content:
-            print(last_msg.content)
-            
-        # Optional: Keep the 'tool check' just in case, but it's not required if the base works
-        if hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
-             print(f"🛠️  AGENT WANTS TO CALL: {last_msg.tool_calls[0]['name']}")
+# ... (LLM and Tools setup remain the same) ...
+
+# 3. Create the Agent with Memory
+tools = [search_tavily, save_to_graph]
+
+system_prompt = """
+You are an Autonomous OSINT Agent. Your ONLY goal is to build a Knowledge Graph.
+1. You MUST search for information if you don't have it.
+2. You MUST use 'save_to_graph' to save every entity and relationship you find.
+3. DO NOT just summarize the findings in text. If you don't call 'save_to_graph', you have FAILED.
+4. When saving, be granular.
+"""
+
+# Initialize Memory (In-RAM persistence)
+memory = MemorySaver()
+
+# Pass the checkpointer to the agent
+agent_executor = create_react_agent(
+    llm, 
+    tools, 
+    prompt=system_prompt,
+    checkpointer=memory # <--- THIS ENABLES MEMORY
+)
+
