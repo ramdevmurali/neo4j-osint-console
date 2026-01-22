@@ -1,74 +1,55 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field # <--- Added Field
-from src.agent import agent_executor
 import logging
-import uuid # <--- To generate IDs if needed
+import uuid
+from dotenv import load_dotenv
 
-# Initialize API
-app = FastAPI(title="Gotham OSINT API", version="1.1")
+# Initialize Env FIRST
+load_dotenv()
 
-# Logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from src.agent import agent_executor
+
+app = FastAPI(title="Gotham OSINT API", version="1.0")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api")
 
-# Define the Request Body
 class MissionRequest(BaseModel):
     task: str
-    # New Optional Field: thread_id
-    # If the user doesn't provide one, we'll create a new conversation
     thread_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 @app.get("/")
-def health_check():
-    return {"status": "operational", "system": "Project Gotham"}
+def health():
+    return {"status": "operational"}
 
 @app.post("/run-mission")
-async def run_mission(request: MissionRequest):
-    """
-    Endpoint to trigger the Autonomous Agent with Memory.
-    """
-    task = request.task
-    thread_id = request.thread_id
-    
-    logger.info(f"🚀 Received Mission: {task} (Thread: {thread_id})")
-    
-    config = {"configurable": {"thread_id": thread_id}}
+async def run_mission(req: MissionRequest):
+    logger.info(f"Task: {req.task} | Thread: {req.thread_id}")
     
     try:
         result = agent_executor.invoke(
-            {"messages": [("user", task)]},
-            config=config
+            {"messages": [("user", req.task)]},
+            config={"configurable": {"thread_id": req.thread_id}}
         )
         
-        # --- IMPROVED RESPONSE LOGIC ---
-        messages = result["messages"]
-        last_msg = messages[-1]
-        response_text = last_msg.content
+        # Extract Response
+        last_msg = result["messages"][-1]
+        content = last_msg.content
         
-        # 1. If content is empty, check if it was a Tool Call
-        if not response_text and hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
-            tool_name = last_msg.tool_calls[0]['name']
-            tool_args = last_msg.tool_calls[0]['args']
-            response_text = f"🤖 Agent is executing tool: {tool_name} with args: {tool_args}"
+        # Fallback for tool-only responses
+        if not content and hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
+            tc = last_msg.tool_calls[0]
+            content = f"🤖 Executed tool: {tc['name']} (args: {tc['args']})"
             
-        # 2. If still empty (rare), look backwards for the last text message
-        if not response_text:
-            for msg in reversed(messages):
-                if msg.content:
-                    response_text = msg.content
-                    break
-        
-        # 3. Final Fallback
-        if not response_text:
-            response_text = "✅ Task processed (No text output generated)."
-
         return {
-            "mission": task,
-            "result": response_text,
-            "thread_id": thread_id,
+            "result": content or "Task processed.",
+            "thread_id": req.thread_id,
             "status": "success"
         }
         
     except Exception as e:
-        logger.error(f"❌ Mission Failed: {e}")
+        logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
