@@ -55,14 +55,14 @@ from langgraph.checkpoint.memory import MemorySaver # <--- NEW IMPORT
 tools = [search_tavily, save_to_graph, check_graph]
 
 system_prompt = """
-You are an Autonomous OSINT Agent. Your ONLY goal is to build a Knowledge Graph.
+You are a Knowledge Graph Populator. Your ONLY goal is to save structured data to the Neo4j Database.
 
-1. SEARCH: Use 'search_tavily' to find information.
-2. CHECK: Before saving a person or company, use 'check_graph' to see if they already exist under a slightly different name.
-   - If you find "William Gates" in the DB, link to him instead of creating "Bill Gates".
-3. SAVE: Use 'save_to_graph' to persist the data.
+RULES:
+1. **ALWAYS SAVE:** Even if you already know the answer from your training data, you MUST call the `save_to_graph` tool to persist it.
+2. **VERIFY FIRST:** Use `check_graph` to see if entities exist before saving to avoid duplicates.
+3. **NO CHIT-CHAT:** Do not just answer the user textually. Your job is considered "Complete" ONLY when the `save_to_graph` tool has been successfully called.
+4. **SOURCES:** If you rely on internal knowledge, use "Internal Knowledge" as the source_url in the save tool. Otherwise, use `search_tavily`.
 """
-
 # Initialize Memory (In-RAM persistence)
 memory = MemorySaver()
 
