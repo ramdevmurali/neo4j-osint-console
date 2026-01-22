@@ -1,13 +1,14 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.prebuilt import create_react_agent
-from langchain_core.tools import tool
-from src.config import Config
-from src.search import perform_search
-from src.graph_ops import insert_knowledge
-from src.schema import KnowledgeGraphUpdate
 import logging
-from langgraph.checkpoint.memory import MemorySaver 
+
+from langchain_core.tools import tool
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+
+from src.config import Config
 from src.graph_ops import insert_knowledge, lookup_entity
+from src.schema import KnowledgeGraphUpdate
+from src.search import perform_search
 
 
 # Setup Logger
@@ -18,6 +19,8 @@ logger = logging.getLogger("gotham_agent")
 llm = ChatGoogleGenerativeAI(
     model=Config.MODEL_NAME,
     temperature=0,
+    max_retries=Config.LLM_MAX_RETRIES,
+    timeout=Config.LLM_TIMEOUT,
     convert_system_message_to_human=True
 )
 
@@ -48,9 +51,6 @@ def check_graph(name: str):
     """
     return lookup_entity(name)
 
-from langgraph.checkpoint.memory import MemorySaver # <--- NEW IMPORT
-
-
 # 3. Create the Agent with Memory
 tools = [search_tavily, save_to_graph, check_graph]
 
@@ -74,3 +74,17 @@ agent_executor = create_react_agent(
     checkpointer=memory # <--- THIS ENABLES MEMORY
 )
 
+def run_agent(task: str, thread_id: str | None = None) -> str:
+    payload = {"messages": [("user", task)]}
+    if thread_id:
+        result = agent_executor.invoke(payload, config={"configurable": {"thread_id": thread_id}})
+    else:
+        result = agent_executor.invoke(payload)
+
+    last_msg = result["messages"][-1]
+    content = last_msg.content
+    if not content and hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+        tc = last_msg.tool_calls[0]
+        content = f"🤖 Executed tool: {tc['name']} (args: {tc['args']})"
+
+    return content or "Task processed."

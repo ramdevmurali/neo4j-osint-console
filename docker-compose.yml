@@ -4,27 +4,19 @@ services:
     container_name: gotham_knowledge_graph
     restart: unless-stopped
     ports:
-      - "${NEO4J_HTTP_PORT}:7474" # HTTP for Browser
-      - "${NEO4J_BOLT_PORT}:7687" # Bolt for Python Clients
+      - "${NEO4J_HTTP_PORT}:7474"
+      - "${NEO4J_BOLT_PORT}:7687"
     volumes:
       - ./neo4j_data/data:/data
       - ./neo4j_data/logs:/logs
       - ./neo4j_data/plugins:/plugins
     environment:
-      # Auth from .env
       - NEO4J_AUTH=${NEO4J_AUTH}
-      
-      # Plugins: Enable APOC for advanced data manipulation
       - NEO4J_PLUGINS=["apoc"]
-      
-      # Security: Allow APOC to run internal procedures
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
-      
-      # Memory Management (Optional but good practice)
       - NEO4J_server_memory_pagecache_size=512M
       - NEO4J_server_memory_heap_initial__size=512M
       - NEO4J_server_memory_heap_max__size=1G
-      
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
       interval: 10s

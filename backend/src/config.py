@@ -6,8 +6,9 @@ load_dotenv()
 
 class Config:
     # Model
-    LLM_PROVIDER = "google"
     MODEL_NAME = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+    LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "6"))
+    LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "60"))
     
     # Search
     MAX_SEARCH_RESULTS = 3
@@ -20,8 +21,3 @@ class Config:
     # Keys
     TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-    @staticmethod
-    def validate():
-        if not Config.GOOGLE_API_KEY: raise ValueError("Missing GOOGLE_API_KEY")
-        if not Config.TAVILY_API_KEY: raise ValueError("Missing TAVILY_API_KEY")

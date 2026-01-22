@@ -1,5 +1,6 @@
+from typing import Literal, List
+
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
 
 class Entity(BaseModel):
     name: str = Field(..., description="The unique name of the entity.")
@@ -13,9 +14,7 @@ class Relationship(BaseModel):
     properties: dict = Field(default_factory=dict, description="Edge attributes.")
 
 class KnowledgeGraphUpdate(BaseModel):
-    """
-    Atomic unit of knowledge to be added to the graph.
-    """
+    """Atomic unit of knowledge to be added to the graph."""
     source_url: str = Field(..., description="The URL where this information was found.")
     entities: List[Entity] = Field(default_factory=list)
     relationships: List[Relationship] = Field(default_factory=list)

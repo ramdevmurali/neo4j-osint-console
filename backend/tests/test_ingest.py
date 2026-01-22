@@ -1,7 +1,6 @@
 from src.server import add_knowledge
 from src.schema import KnowledgeGraphUpdate, Entity, Relationship
 
-# 1. Create Mock Data
 mock_data = KnowledgeGraphUpdate(
     source_url="https://project-gotham.test/briefing-001",
     entities=[
@@ -17,7 +16,6 @@ mock_data = KnowledgeGraphUpdate(
 
 print("🚀 Attempting to ingest mock data...")
 
-# 2. Run the tool function directly
 try:
     result = add_knowledge(mock_data)
     print(f"✅ RESULT: {result}")

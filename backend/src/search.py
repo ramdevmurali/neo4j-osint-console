@@ -1,7 +1,8 @@
-from tavily import TavilyClient
-from src.config import Config
 import logging
 
+from tavily import TavilyClient
+
+from src.config import Config
 logger = logging.getLogger("tavily_search")
 
 def perform_search(query: str, max_results: int = 3) -> list[dict]:
@@ -11,8 +12,8 @@ def perform_search(query: str, max_results: int = 3) -> list[dict]:
     try:
         client = TavilyClient(api_key=Config.TAVILY_API_KEY)
         response = client.search(
-            query=query, 
-            search_depth="advanced", 
+            query=query,
+            search_depth="advanced",
             max_results=max_results
         )
         
