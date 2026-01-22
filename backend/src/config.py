@@ -9,6 +9,7 @@ class Config:
     MODEL_NAME = os.getenv("LLM_MODEL", "gemini-2.5-flash")
     LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "6"))
     LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "60"))
+    RUN_MISSION_TIMEOUT = int(os.getenv("RUN_MISSION_TIMEOUT", "120"))
     
     # Search
     MAX_SEARCH_RESULTS = 3

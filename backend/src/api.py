@@ -2,10 +2,12 @@ import logging
 import uuid
 
 from fastapi import FastAPI, HTTPException
+import asyncio
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from src.agent import run_agent
+from src.config import Config
 
 app = FastAPI(title="Gotham OSINT API", version="1.0")
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +26,10 @@ async def run_mission(req: MissionRequest):
     logger.info(f"Task: {req.task} | Thread: {req.thread_id}")
     
     try:
-        content = await run_in_threadpool(run_agent, req.task, req.thread_id)
+        content = await asyncio.wait_for(
+            run_in_threadpool(run_agent, req.task, req.thread_id),
+            timeout=Config.RUN_MISSION_TIMEOUT,
+        )
 
         return {
             "result": content,
@@ -32,6 +37,8 @@ async def run_mission(req: MissionRequest):
             "status": "success"
         }
         
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Mission timed out")
     except Exception as e:
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
