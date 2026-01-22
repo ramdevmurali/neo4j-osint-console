@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-# Load once. No other file needs to call this.
-load_dotenv()
+# Load backend/.env deterministically (independent of CWD).
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 class Config:
     # Model
