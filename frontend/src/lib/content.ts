@@ -1,7 +1,6 @@
 export const stats = [
   { value: "112", label: "entities tracked" },
   { value: "24", label: "sources indexed" },
-  { value: "98%", label: "dedupe confidence" },
 ];
 
 export const missionHighlights = [

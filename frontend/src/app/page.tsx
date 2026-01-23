@@ -32,10 +32,6 @@ export default function Home() {
         setStats([
           { value: String(data.entities ?? 0), label: "entities tracked" },
           { value: String(data.sources ?? 0), label: "sources indexed" },
-          {
-            value: `${data.dedupe_confidence ?? 100}%`,
-            label: "dedupe confidence",
-          },
         ]);
       } catch (err) {
         setStatsError(err instanceof Error ? err.message : "Could not load stats");
