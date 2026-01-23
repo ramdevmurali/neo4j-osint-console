@@ -2,9 +2,9 @@ import logging
 
 from mcp.server.fastmcp import FastMCP
 
-from src.graph_ops import insert_knowledge
 from src.schema import KnowledgeGraphUpdate
-from src.search import perform_search
+from src.tools.graph import insert_knowledge
+from src.tools.search import perform_search
 logging.basicConfig(level=logging.INFO)
 mcp = FastMCP("Gotham Knowledge Graph")
 

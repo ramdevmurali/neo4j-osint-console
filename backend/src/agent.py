@@ -1,49 +1,19 @@
 import logging
 import json
 
-from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
 from src.config import Config
-from src.graph_ops import insert_knowledge, lookup_entity
-from src.schema import KnowledgeGraphUpdate
-from src.search import perform_search
+from src.tools.graph import save_to_graph, check_graph
+from src.tools.search import search_tavily
 
 
 # Setup Logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gotham_agent")
 
-# 1. Define Tools
-@tool
-def search_tavily(query: str):
-    """
-    Search the web for information using Tavily.
-    Use this to gather facts before saving them to the database.
-    """
-    return perform_search(query, max_results=Config.MAX_SEARCH_RESULTS)
-
-@tool
-def save_to_graph(data: KnowledgeGraphUpdate):
-    """
-    Save extracted entities and relationships to the Knowledge Graph.
-    Use this AFTER gathering information.
-    Input must be a valid JSON object matching the KnowledgeGraphUpdate schema.
-    """
-    if isinstance(data, dict):
-        data = KnowledgeGraphUpdate(**data)
-    return insert_knowledge(data)
-@tool
-def check_graph(name: str):
-    """
-    Use this tool BEFORE saving to check if an entity already exists in the database.
-    Useful for preventing duplicates (e.g. checking if 'Bill Gates' already exists as 'William Gates').
-    """
-    return lookup_entity(name)
-
-# 3. Create the Agent with Memory
 tools = [search_tavily, save_to_graph, check_graph]
 
 system_prompt = """

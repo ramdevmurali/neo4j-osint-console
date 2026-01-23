@@ -1,6 +1,10 @@
 import logging
 import re
 from difflib import SequenceMatcher
+
+from langchain_core.tools import tool
+
+from src.config import Config
 from src.graph_db import GraphManager
 from src.schema import KnowledgeGraphUpdate
 
@@ -13,8 +17,8 @@ _INDEX_BY_LABEL = {
     "Topic": "entity_name_index_loc_topic",
 }
 
+
 def _find_fuzzy_match(session, name, label, threshold=0.6):
-    """Internal helper to find matches."""
     index = _INDEX_BY_LABEL.get(label, "entity_name_index")
     query = f"""
     CALL db.index.fulltext.queryNodes("{index}", $name + "~") YIELD node, score
@@ -23,16 +27,19 @@ def _find_fuzzy_match(session, name, label, threshold=0.6):
     """
     return session.run(query, name=name, label=label, threshold=threshold).single()
 
+
 def _normalize_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", name.lower())
+
 
 def _similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, _normalize_name(a), _normalize_name(b)).ratio()
 
+
 def resolve_entity(session, name, label):
-    """Auto-resolves name conflicts for writing."""
     exact = session.run(f"MATCH (n:{label}) WHERE n.name = $name RETURN n.name", name=name).single()
-    if exact: return exact[0]
+    if exact:
+        return exact[0]
 
     fuzzy = _find_fuzzy_match(session, name, label)
     if fuzzy:
@@ -43,15 +50,18 @@ def resolve_entity(session, name, label):
             logger.info(f"🔄 Merging '{name}' -> Existing '{candidate}' ({score:.2f}, sim {similarity:.2f})")
             return candidate
         logger.info(f"⚠️ Skipping fuzzy match '{name}' -> '{candidate}' ({score:.2f}, sim {similarity:.2f})")
-    
+
     return name
+
 
 def insert_knowledge(data: KnowledgeGraphUpdate) -> str:
     db = GraphManager()
     logger.info(f"Ingesting: {data.source_url}")
 
     with db.session() as session:
-        session.run("MERGE (d:Document {url: $url}) ON CREATE SET d.created_at = timestamp()", url=data.source_url)
+        session.run(
+            "MERGE (d:Document {url: $url}) ON CREATE SET d.created_at = timestamp()", url=data.source_url
+        )
 
         name_map = {}
         for entity in data.entities:
@@ -59,14 +69,15 @@ def insert_knowledge(data: KnowledgeGraphUpdate) -> str:
             name_map[entity.name] = final_name
             session.run(
                 f"MERGE (e:{entity.label} {{name: $name}}) ON CREATE SET e += $props ON MATCH SET e += $props",
-                name=final_name, props=entity.properties
+                name=final_name,
+                props=entity.properties,
             )
 
         count = 0
         for rel in data.relationships:
             s_name = name_map.get(rel.source, rel.source)
             t_name = name_map.get(rel.target, rel.target)
-            
+
             session.run(
                 """
                 MATCH (d:Document {url: $url})
@@ -78,14 +89,18 @@ def insert_knowledge(data: KnowledgeGraphUpdate) -> str:
                 MERGE (d)-[:MENTIONS]->(s)
                 MERGE (d)-[:MENTIONS]->(t)
                 """,
-                s=s_name, t=t_name, url=data.source_url, type=rel.type, props=rel.properties
+                s=s_name,
+                t=t_name,
+                url=data.source_url,
+                type=rel.type,
+                props=rel.properties,
             )
             count += 1
 
     return f"Ingested {len(data.entities)} entities, {count} relationships."
 
+
 def lookup_entity(name: str) -> str:
-    """Read-only tool for Agent to check DB."""
     db = GraphManager()
     with db.session() as session:
         for label in ["Person", "Organization", "Location", "Topic"]:
@@ -96,3 +111,20 @@ def lookup_entity(name: str) -> str:
                 if similarity >= 0.85:
                     return f"Found similar entity: '{candidate}' ({label})"
     return "No matching entity found."
+
+
+@tool
+def save_to_graph(data: KnowledgeGraphUpdate):
+    """Save extracted entities and relationships to the Knowledge Graph."""
+    if isinstance(data, dict):
+        data = KnowledgeGraphUpdate(**data)
+    return insert_knowledge(data)
+
+
+@tool
+def check_graph(name: str):
+    """Check if an entity already exists (fuzzy) to prevent duplicates."""
+    return lookup_entity(name)
+
+
+__all__ = ["insert_knowledge", "lookup_entity", "save_to_graph", "check_graph"]

@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from src.graph_ops import insert_knowledge
+from src.tools.graph import insert_knowledge
 from src.schema import KnowledgeGraphUpdate, Entity
 
 logging.basicConfig(level=logging.INFO)
