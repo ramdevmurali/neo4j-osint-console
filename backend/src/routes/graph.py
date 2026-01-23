@@ -20,8 +20,11 @@ async def graph_sample(doc_limit: int = 5):
         OPTIONAL MATCH (d)-[:MENTIONS]->(e)
         OPTIONAL MATCH (e)-[r:RELATED]->(t)
         WITH collect(distinct d) AS docs, collect(distinct e) AS ent_nodes, collect(distinct t) AS target_nodes, collect(distinct r) AS rels
+        WITH docs, ent_nodes, target_nodes, rels
+        UNWIND ent_nodes + target_nodes AS n
+        WITH docs, rels, collect(distinct n) AS uniq_nodes
         WITH docs,
-             [n IN ent_nodes + target_nodes WHERE n IS NOT NULL | {id: elementId(n), labels: labels(n), name: coalesce(n.name, n.url), props: properties(n)}] AS nodes,
+             [n IN uniq_nodes | {id: elementId(n), labels: labels(n), name: coalesce(n.name, n.url), props: properties(n)}] AS nodes,
              [r IN rels WHERE r IS NOT NULL | {id: elementId(r), type: type(r), source: elementId(startNode(r)), target: elementId(endNode(r)), props: properties(r)}] AS edges
         RETURN nodes,
                edges,
@@ -182,4 +185,3 @@ async def entity_profile(name: str):
     except Exception as e:
         logger.error(f"Entity profile error: {e}")
         raise HTTPException(status_code=500, detail="Entity profile failed")
-

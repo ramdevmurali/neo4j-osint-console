@@ -3,7 +3,7 @@ import json
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt import create_react_agent  # TODO: migrate to langchain.agents.create_agent (deprecation warning)
 
 from src.config import Config
 from src.tools.graph import save_to_graph, check_graph
