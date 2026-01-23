@@ -20,7 +20,6 @@ export default function Home() {
   const [graphNodes, setGraphNodes] = useState<any[]>([]);
   const [graphEdges, setGraphEdges] = useState<any[]>([]);
   const [showGraph, setShowGraph] = useState(false);
-  const [graphFetched, setGraphFetched] = useState(false);
   const [stats, setStats] = useState(staticStats);
   const [statsError, setStatsError] = useState<string | null>(null);
 
@@ -51,41 +50,38 @@ export default function Home() {
       setShowGraph(false);
       return;
     }
-    // first time fetch
-    if (!graphFetched) {
-      setSampleLoading(true);
-      setSampleError(null);
-      try {
-        const resp = await fetch(`/api/run-mission?doc_limit=6`);
-        if (!resp.ok) {
-          throw new Error(`Backend responded ${resp.status}`);
-        }
-        const data = await resp.json();
-        const names: string[] = [];
-        if (Array.isArray(data.nodes)) {
-          for (const node of data.nodes.slice(0, 6)) {
-            if (node && typeof node === "object" && "name" in node) {
-              const name = String((node as { name?: unknown }).name ?? "");
-              if (name) names.push(name);
-            }
+    // always fetch fresh on open
+    setSampleLoading(true);
+    setSampleError(null);
+    try {
+      const resp = await fetch(`/api/run-mission?doc_limit=6`);
+      if (!resp.ok) {
+        throw new Error(`Backend responded ${resp.status}`);
+      }
+      const data = await resp.json();
+      const names: string[] = [];
+      if (Array.isArray(data.nodes)) {
+        for (const node of data.nodes.slice(0, 6)) {
+          if (node && typeof node === "object" && "name" in node) {
+            const name = String((node as { name?: unknown }).name ?? "");
+            if (name) names.push(name);
           }
         }
-        setSampleSummary({
-          node_count: data.node_count ?? 0,
-          edge_count: data.edge_count ?? 0,
-          sample_nodes: names,
-          documents: Array.isArray(data.documents) ? data.documents : [],
-        });
-        setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
-        setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
-        setGraphFetched(true);
-      } catch (err) {
-        setSampleError(err instanceof Error ? err.message : "Could not load graph sample");
-      } finally {
-        setSampleLoading(false);
       }
+      setSampleSummary({
+        node_count: data.node_count ?? 0,
+        edge_count: data.edge_count ?? 0,
+        sample_nodes: names,
+        documents: Array.isArray(data.documents) ? data.documents : [],
+      });
+      setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
+      setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
+      setShowGraph(true);
+    } catch (err) {
+      setSampleError(err instanceof Error ? err.message : "Could not load graph sample");
+    } finally {
+      setSampleLoading(false);
     }
-    setShowGraph(true);
   };
 
   return (
