@@ -6,6 +6,7 @@ import Pill from "@/components/ui/pill";
 import StatCard from "@/components/ui/stat-card";
 import StatusPill from "@/components/ui/status-pill";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import GraphPreview from "@/components/ui/graph-preview";
 import { featureCards, missionHighlights, stats } from "@/lib/content";
 import { useState } from "react";
 
@@ -18,6 +19,8 @@ export default function Home() {
   } | null>(null);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
+  const [graphNodes, setGraphNodes] = useState<any[]>([]);
+  const [graphEdges, setGraphEdges] = useState<any[]>([]);
 
   const handleViewSample = async () => {
     setSampleLoading(true);
@@ -43,6 +46,8 @@ export default function Home() {
         sample_nodes: names,
         documents: Array.isArray(data.documents) ? data.documents : [],
       });
+      setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
+      setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
     } catch (err) {
       setSampleError(err instanceof Error ? err.message : "Could not load graph sample");
     } finally {
@@ -125,6 +130,9 @@ export default function Home() {
                     from {Math.min(sampleSummary.documents.length, 6)} recent sources
                   </p>
                 ) : null}
+                <div className="mt-3">
+                  <GraphPreview nodes={graphNodes} edges={graphEdges} />
+                </div>
               </div>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-3">
