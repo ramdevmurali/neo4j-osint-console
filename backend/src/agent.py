@@ -89,8 +89,53 @@ def run_agent(task: str, thread_id: str | None = None) -> str:
 
     last_msg = result["messages"][-1]
     content = last_msg.content
-    if not content and hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
-        tc = last_msg.tool_calls[0]
-        content = f"🤖 Executed tool: {tc['name']} (args: {tc['args']})"
+    # If LLM returned only tool calls, summarize the save_to_graph action
+    if not content:
+        # search from the end to find any tool call
+        tool_calls = None
+        for msg in reversed(result.get("messages", [])):
+            calls = getattr(msg, "tool_calls", None)
+            if calls:
+                tool_calls = calls
+                break
+            if isinstance(msg, dict) and msg.get("tool_calls"):
+                tool_calls = msg["tool_calls"]
+                break
+
+        if tool_calls:
+            tc = tool_calls[0]
+            name = tc.get("name") or tc.get("tool") or ""
+            args = tc.get("args", {})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except Exception:
+                    args = {}
+
+            if name == "save_to_graph":
+                data = args.get("data", args) if isinstance(args, dict) else {}
+                entities = data.get("entities", []) if isinstance(data, dict) else []
+
+                def pick_entity(labels_priority):
+                    for lbl in labels_priority:
+                        for ent in entities:
+                            if isinstance(ent, dict) and ent.get("label") == lbl and ent.get("name"):
+                                return ent
+                    for ent in entities:
+                        if isinstance(ent, dict) and ent.get("name"):
+                            return ent
+                    return None
+
+                primary = pick_entity(["Person", "Organization"])
+                name_str = primary.get("name") if primary else None
+                label_str = primary.get("label") if primary else None
+
+                content = (
+                    f"Saved to graph: {name_str} ({label_str})."
+                    if name_str
+                    else f"Saved to graph: {len(entities)} entities, {len(data.get('relationships', []))} relationships."
+                )
+            else:
+                content = "Saved to graph."
 
     return content or "Task processed."

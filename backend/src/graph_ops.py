@@ -50,7 +50,7 @@ def insert_knowledge(data: KnowledgeGraphUpdate) -> str:
     db = GraphManager()
     logger.info(f"Ingesting: {data.source_url}")
 
-    with db.driver.session() as session:
+    with db.session() as session:
         session.run("MERGE (d:Document {url: $url}) ON CREATE SET d.created_at = timestamp()", url=data.source_url)
 
         name_map = {}
@@ -87,7 +87,7 @@ def insert_knowledge(data: KnowledgeGraphUpdate) -> str:
 def lookup_entity(name: str) -> str:
     """Read-only tool for Agent to check DB."""
     db = GraphManager()
-    with db.driver.session() as session:
+    with db.session() as session:
         for label in ["Person", "Organization", "Location", "Topic"]:
             match = _find_fuzzy_match(session, name, label, threshold=0.7)
             if match:

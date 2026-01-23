@@ -13,7 +13,12 @@ class GraphManager:
             cls._instance._initialize()
         return cls._instance
 
-    def _initialize(self):
+    def _initialize(self, force: bool = False):
+        if force and getattr(self, "driver", None):
+            try:
+                self.driver.close()
+            except Exception:
+                pass
         try:
             self.driver: Driver = GraphDatabase.driver(
                 Config.NEO4J_URI, 
@@ -45,6 +50,14 @@ class GraphManager:
                     session.run(q)
                 except Exception as e:
                     logger.error(f"Constraint Failed: {e}")
+
+    def session(self):
+        try:
+            self.driver.verify_connectivity()
+        except Exception as e:
+            logger.warning(f"🔁 Reconnecting Neo4j driver due to: {e}")
+            self._initialize(force=True)
+        return self.driver.session()
 
 if __name__ == "__main__":
     GraphManager().setup_constraints()
