@@ -1,13 +1,11 @@
 'use client';
 
 import MissionConsole from "@/components/layout/mission-console";
-import FeatureCard from "@/components/ui/feature-card";
 import Pill from "@/components/ui/pill";
 import StatCard from "@/components/ui/stat-card";
-import StatusPill from "@/components/ui/status-pill";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import GraphPreview from "@/components/ui/graph-preview";
-import { featureCards, missionHighlights, stats as staticStats } from "@/lib/content";
+import { missionHighlights, stats as staticStats } from "@/lib/content";
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -21,6 +19,8 @@ export default function Home() {
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [graphNodes, setGraphNodes] = useState<any[]>([]);
   const [graphEdges, setGraphEdges] = useState<any[]>([]);
+  const [showGraph, setShowGraph] = useState(false);
+  const [graphFetched, setGraphFetched] = useState(false);
   const [stats, setStats] = useState(staticStats);
   const [statsError, setStatsError] = useState<string | null>(null);
 
@@ -46,36 +46,46 @@ export default function Home() {
   }, []);
 
   const handleViewSample = async () => {
-    setSampleLoading(true);
-    setSampleError(null);
-    try {
-      const resp = await fetch(`/api/run-mission?doc_limit=6`);
-      if (!resp.ok) {
-        throw new Error(`Backend responded ${resp.status}`);
-      }
-      const data = await resp.json();
-      const names: string[] = [];
-      if (Array.isArray(data.nodes)) {
-        for (const node of data.nodes.slice(0, 6)) {
-          if (node && typeof node === "object" && "name" in node) {
-            const name = String((node as { name?: unknown }).name ?? "");
-            if (name) names.push(name);
+    // toggle off
+    if (showGraph) {
+      setShowGraph(false);
+      return;
+    }
+    // first time fetch
+    if (!graphFetched) {
+      setSampleLoading(true);
+      setSampleError(null);
+      try {
+        const resp = await fetch(`/api/run-mission?doc_limit=6`);
+        if (!resp.ok) {
+          throw new Error(`Backend responded ${resp.status}`);
+        }
+        const data = await resp.json();
+        const names: string[] = [];
+        if (Array.isArray(data.nodes)) {
+          for (const node of data.nodes.slice(0, 6)) {
+            if (node && typeof node === "object" && "name" in node) {
+              const name = String((node as { name?: unknown }).name ?? "");
+              if (name) names.push(name);
+            }
           }
         }
+        setSampleSummary({
+          node_count: data.node_count ?? 0,
+          edge_count: data.edge_count ?? 0,
+          sample_nodes: names,
+          documents: Array.isArray(data.documents) ? data.documents : [],
+        });
+        setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
+        setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
+        setGraphFetched(true);
+      } catch (err) {
+        setSampleError(err instanceof Error ? err.message : "Could not load graph sample");
+      } finally {
+        setSampleLoading(false);
       }
-      setSampleSummary({
-        node_count: data.node_count ?? 0,
-        edge_count: data.edge_count ?? 0,
-        sample_nodes: names,
-        documents: Array.isArray(data.documents) ? data.documents : [],
-      });
-      setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
-      setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
-    } catch (err) {
-      setSampleError(err instanceof Error ? err.message : "Could not load graph sample");
-    } finally {
-      setSampleLoading(false);
     }
+    setShowGraph(true);
   };
 
   return (
@@ -99,7 +109,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <StatusPill label="Live graph ingest" />
           <ThemeToggle />
         </nav>
 
@@ -121,10 +130,10 @@ export default function Home() {
                 onClick={handleViewSample}
                 disabled={sampleLoading}
               >
-                {sampleLoading ? "Loading..." : "View sample graph"}
+                {sampleLoading ? "Loading..." : showGraph ? "Hide sample graph" : "View sample graph"}
               </button>
               <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                Aura-ready • MCP tools • Neo4j
+                Aura-ready • Neo4j
               </div>
             </div>
             {sampleError ? (
@@ -132,7 +141,7 @@ export default function Home() {
                 {sampleError}
               </div>
             ) : null}
-            {sampleSummary ? (
+            {showGraph && sampleSummary ? (
               <div className="reveal delay-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-sm text-[var(--ink)]">
                 <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">
                   Sample graph
@@ -165,19 +174,9 @@ export default function Home() {
             ) : null}
           </div>
 
-          <MissionConsole highlights={missionHighlights} />
+          <MissionConsole highlights={missionHighlights.slice(0, 1)} />
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          {featureCards.map((card, index) => (
-            <FeatureCard
-              key={card.title}
-              title={card.title}
-              copy={card.copy}
-              delay={index + 1}
-            />
-          ))}
-        </section>
       </main>
     </div>
   );
