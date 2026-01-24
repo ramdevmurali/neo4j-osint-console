@@ -117,8 +117,8 @@ async def run_company_insight(company: str, thread_id: str | None):
 
     # Run profile, competitors, and mood concurrently with caps
     profile_result, competitor_result, mood_view = await asyncio.gather(
-        run_llm(profile_prompt, min(Config.RUN_MISSION_TIMEOUT, 25)),
-        run_llm(competitor_prompt, min(Config.RUN_MISSION_TIMEOUT, 25)),
+        run_llm(profile_prompt, min(Config.RUN_MISSION_TIMEOUT, 20)),
+        run_llm(competitor_prompt, min(Config.RUN_MISSION_TIMEOUT, 20)),
         run_company_mood(company, thread_id),
         return_exceptions=True,
     )
@@ -203,16 +203,15 @@ async def run_company_mood(company: str, thread_id: str | None):
     Derive company mood from recent headlines; returns dict with label, score, headlines.
     """
     prompt = (
-        f"Fetch 3-5 recent news headlines about '{company}' (last 90 days). "
-        "Output JSON only with fields: mood_label (one of positive, neutral, negative), "
-        "mood_score (number between -1 and 1), headlines (array of {title, url}). "
-        "Keep the JSON short and no extra text."
+        f"Give a quick sentiment for '{company}' from recent news (last 60 days). "
+        "Return JSON only: {mood_label:'positive|neutral|negative', mood_score:-1..1, headlines:[{title, url}] up to 3}. "
+        "No prose, JSON only."
     )
 
     mood_thread = thread_id or f"mood-{company}"
     raw = await asyncio.wait_for(
         run_in_threadpool(run_agent, prompt, mood_thread),
-        timeout=min(Config.RUN_MISSION_TIMEOUT, 20),
+        timeout=min(Config.RUN_MISSION_TIMEOUT, 15),
     )
 
     parsed = _extract_json_block(raw if isinstance(raw, str) else str(raw))
