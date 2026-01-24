@@ -103,40 +103,49 @@ async def run_competitor_flow(company: str, thread_id: str | None) -> tuple[Any,
 
 
 async def run_company_insight(company: str, thread_id: str | None):
-    """End-to-end: profile + competitors + graph views."""
+    """End-to-end: profile + competitors + mood, in parallel with bounded timeouts."""
+
     profile_prompt = build_profile_prompt(company)
     competitor_prompt = build_competitor_prompt(company)
     competitor_fallback = build_competitor_fallback_prompt(company)
 
-    profile_result = await asyncio.wait_for(
-        run_in_threadpool(run_agent, profile_prompt, thread_id or ""),
-        timeout=Config.RUN_MISSION_TIMEOUT,
+    async def run_llm(prompt: str, timeout: float):
+        return await asyncio.wait_for(
+            run_in_threadpool(run_agent, prompt, thread_id or ""),
+            timeout=timeout,
+        )
+
+    # Run profile, competitors, and mood concurrently with caps
+    profile_result, competitor_result, mood_view = await asyncio.gather(
+        run_llm(profile_prompt, min(Config.RUN_MISSION_TIMEOUT, 25)),
+        run_llm(competitor_prompt, min(Config.RUN_MISSION_TIMEOUT, 25)),
+        run_company_mood(company, thread_id),
+        return_exceptions=True,
     )
-    competitor_result = await asyncio.wait_for(
-        run_in_threadpool(run_agent, competitor_prompt, thread_id or ""),
-        timeout=Config.RUN_MISSION_TIMEOUT,
-    )
+
+    if isinstance(profile_result, Exception):
+        logger.warning(f"profile skipped: {profile_result}")
+        profile_result = "Profile skipped due to error."
 
     competitors = await get_competitors(company)
     competitors_list = filter_competitors(competitors.get("competitors", []))
     if not competitors_list:
-        await asyncio.wait_for(
-            run_in_threadpool(run_agent, competitor_fallback, thread_id or ""),
-            timeout=Config.RUN_MISSION_TIMEOUT,
-        )
-        competitors = await get_competitors(company)
-        competitors_list = filter_competitors(competitors.get("competitors", []))
+        try:
+            await run_llm(competitor_fallback, min(Config.RUN_MISSION_TIMEOUT, 15))
+            competitors = await get_competitors(company)
+            competitors_list = filter_competitors(competitors.get("competitors", []))
+        except Exception as exc:
+            logger.warning(f"competitor fallback skipped: {exc}")
+            competitor_result = "Competitor scout skipped due to error."
 
     try:
         profile_view = await entity_profile(company)
-    except Exception:
+    except Exception as exc:
+        logger.warning(f"profile view skipped: {exc}")
         profile_view = None
 
-    mood_view = None
-    try:
-        mood_view = await run_company_mood(company, thread_id)
-    except Exception as exc:  # pragma: no cover - best effort
-        logger.warning(f"mood fetch skipped: {exc}")
+    if isinstance(mood_view, Exception):
+        logger.warning(f"mood fetch skipped: {mood_view}")
         mood_view = {"label": None, "score": None, "headlines": [], "raw": None}
 
     return {
