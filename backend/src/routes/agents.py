@@ -13,7 +13,6 @@ from src.services.insight import (
     build_profile_prompt,
     filter_competitors,
     run_company_insight,
-    run_company_mood,
 )
 from src.routes.graph import get_competitors, entity_profile  # reuse for response enrichment
 
@@ -141,11 +140,6 @@ async def company_insight(req: CompanyRequest):
             )
             competitors = await get_competitors(req.company)
             competitors_list = filter_competitors(competitors.get("competitors", []))
-        mood_view = None
-        try:
-            mood_view = await run_company_mood(req.company, req.thread_id)
-        except Exception as exc:  # pragma: no cover - best effort
-            logger.warning(f"mood fetch skipped: {exc}")
         try:
             profile_view = await entity_profile(req.company)
         except HTTPException:
@@ -157,7 +151,6 @@ async def company_insight(req: CompanyRequest):
             "competitor_result": competitor_result,
             "profile": profile_view,
             "competitors": competitors_list,
-            "mood": mood_view,
         }
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Company insight timed out")

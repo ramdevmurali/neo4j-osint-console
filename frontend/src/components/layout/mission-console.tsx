@@ -14,11 +14,6 @@ type InsightPayload = {
   competitors?: { competitor: string; reason?: string; source?: string }[];
   profile_result?: unknown;
   competitor_result?: unknown;
-  mood?: {
-    label?: string | null;
-    score?: number | null;
-    headlines?: { title?: string; url?: string }[];
-  } | null;
 };
 
 type MissionConsoleProps = {
@@ -100,36 +95,6 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
       {insight ? (
         <div className="mt-5 space-y-4">
-          {insight.mood ? (
-            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)] flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Mood</p>
-                {insight.mood.label ? (
-                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-xs font-semibold text-[var(--surface-ink)]">
-                    {insight.mood.label} {insight.mood.score !== undefined && insight.mood.score !== null ? `(${Number(insight.mood.score).toFixed(2)})` : ""}
-                  </span>
-                ) : null}
-              </div>
-              {insight.mood.headlines?.length ? (
-                <ul className="space-y-1 text-sm text-[var(--surface-ink)]">
-                  {insight.mood.headlines.slice(0, 3).map((h, idx) => (
-                    <li key={idx} className="break-words">
-                      {h.url ? (
-                        <a className="underline" href={h.url} target="_blank" rel="noreferrer">
-                          {h.title ?? h.url}
-                        </a>
-                      ) : (
-                        <span>{h.title}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-[var(--surface-muted)]">No headlines returned.</p>
-              )}
-            </div>
-          ) : null}
-
           <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Profile</p>
             {insight.profile ? (
