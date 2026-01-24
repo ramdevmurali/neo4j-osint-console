@@ -1,62 +1,19 @@
 import asyncio
 import logging
-import re
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from src.graph_db import GraphManager
+from src.services.graph_queries import fetch_competitors, fetch_entity_profile
 
 logger = logging.getLogger("graph")
 router = APIRouter()
 
 
-# -- helpers ---------------------------------------------------------------
-
-
-_CORP_SUFFIXES = re.compile(r"\b(inc|inc\.|ltd|ltd\.|corp|corp\.|co|co\.|company|companies|group|ag|sa|plc|nv)\b",
-                            re.IGNORECASE)
-
-
-def _canonical_company_name(name: str) -> str:
-    """Lightweight canonicalizer to improve match hit-rate without renaming nodes."""
-    name = name.strip()
-    # Remove common suffixes but keep internal words intact
-    name = _CORP_SUFFIXES.sub("", name)
-    # Collapse repeated spaces
-    name = re.sub(r"\s+", " ", name).strip()
-    return name or name
-
-
-def _find_company_node(session, company: str):
-    """Try exact, normalized, then full-text match; return the node or None."""
-    candidates = [company]
-    norm = _canonical_company_name(company)
-    if norm.lower() != company.lower():
-        candidates.append(norm)
-
-    for cand in candidates:
-        rec = session.run(
-            "MATCH (c:Organization) WHERE toLower(c.name) = toLower($name) RETURN c LIMIT 1",
-            name=cand,
-        ).single()
-        if rec:
-            return rec["c"]
-
-    for cand in candidates:
-        rec = session.run(
-            """
-            CALL db.index.fulltext.queryNodes("entity_name_index", $q + "~")
-            YIELD node, score
-            WHERE 'Organization' IN labels(node)
-            RETURN node, score
-            ORDER BY score DESC LIMIT 1
-            """,
-            q=cand,
-        ).single()
-        if rec:
-            return rec["node"]
-
-    return None
+def _require_param(value: str | None, label: str) -> str:
+    if not value:
+        raise HTTPException(status_code=400, detail=f"{label} is required")
+    return value
 
 
 @router.get("/graph/sample")
@@ -105,29 +62,10 @@ async def graph_sample(doc_limit: int = 5):
 
 @router.get("/graph/competitors")
 async def get_competitors(company: str):
-    if not company:
-        raise HTTPException(status_code=400, detail="company is required")
-    db = GraphManager()
-
-    def query():
-        with db.session() as session:
-            node = _find_company_node(session, company)
-            if not node:
-                return []
-
-            cypher = """
-            MATCH (c:Organization {name: $name})
-            MATCH (c)-[r:RELATED {type:'COMPETES_WITH'}]->(o:Organization)
-            RETURN o.name AS competitor, r.reason AS reason, r.source_url AS source
-            ORDER BY o.name
-            """
-            return [
-                {"competitor": rec["competitor"], "reason": rec["reason"], "source": rec["source"]}
-                for rec in session.run(cypher, {"name": node["name"]})
-            ]
+    company = _require_param(company, "company")
 
     try:
-        data = await asyncio.wait_for(run_in_threadpool(query), timeout=8)
+        data = await asyncio.wait_for(run_in_threadpool(fetch_competitors, company), timeout=8)
         return {"company": company, "competitors": data}
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Competitors query timed out")
@@ -198,44 +136,10 @@ async def recent_docs(limit: int = 15):
 
 @router.get("/graph/profile")
 async def entity_profile(name: str):
-    if not name:
-        raise HTTPException(status_code=400, detail="name is required")
-    db = GraphManager()
-
-    def query():
-        cypher = """
-        CALL {
-            WITH $name AS q
-            MATCH (e) WHERE toLower(e.name) = toLower(q)
-            RETURN e, 1.0 AS score
-            UNION
-            WITH $name AS q
-            CALL db.index.fulltext.queryNodes("entity_name_index", q + "~") YIELD node, score
-            RETURN node AS e, score
-        } 
-        WITH e, score ORDER BY score DESC LIMIT 1
-        OPTIONAL MATCH (e)<-[m:MENTIONS]-(d:Document)
-        OPTIONAL MATCH (e)-[r:RELATED]-(n)
-        RETURN e,
-               collect(distinct {url: d.url, created_at: d.created_at}) AS sources,
-               collect(distinct {id: elementId(n), name: n.name, labels: labels(n), type: type(r)}) AS related
-        LIMIT 1
-        """
-        with db.session() as session:
-            rec = session.run(cypher, {"name": name}).single()
-            if not rec:
-                return None
-            node = rec["e"]
-            return {
-                "name": node.get("name"),
-                "labels": list(node.labels),
-                "properties": dict(node),
-                "sources": rec["sources"],
-                "related": rec["related"],
-            }
+    name = _require_param(name, "name")
 
     try:
-        data = await asyncio.wait_for(run_in_threadpool(query), timeout=8)
+        data = await asyncio.wait_for(run_in_threadpool(fetch_entity_profile, name), timeout=8)
         if data is None:
             raise HTTPException(status_code=404, detail="Entity not found")
         return data

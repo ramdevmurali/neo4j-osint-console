@@ -3,7 +3,7 @@ import json
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import create_react_agent  # TODO: migrate to langchain.agents.create_agent (deprecation warning)
+from langchain.agents import create_agent
 
 from src.config import Config
 from src.tools.graph import save_to_graph, check_graph
@@ -37,10 +37,10 @@ def _build_agent():
         convert_system_message_to_human=True
     )
     memory = MemorySaver()
-    return create_react_agent(
+    return create_agent(
         llm,
         tools,
-        prompt=system_prompt,
+        system_prompt=system_prompt,
         checkpointer=memory,
     )
 

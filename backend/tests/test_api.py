@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 import src.api as api
+import src.routes.agents as agents
 
 def test_health_check():
     client = TestClient(api.app)
@@ -19,7 +20,7 @@ def test_run_mission_flow(monkeypatch):
     }
 
     client = TestClient(api.app)
-    monkeypatch.setattr(api, "run_agent", lambda task, thread_id=None: "stubbed-response")
+    monkeypatch.setattr(agents, "run_agent", lambda task, thread_id=None: "stubbed-response")
     response = client.post("/run-mission", json=payload)
     
     assert response.status_code == 200
