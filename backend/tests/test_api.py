@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 import src.api as api
 import src.routes.agents as agents
+import src.services.graph_queries as graph_queries
 
 def test_health_check():
     client = TestClient(api.app)
@@ -51,3 +52,25 @@ def test_company_mood_endpoint(monkeypatch):
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["mood_label"] == "Neutral"
+
+
+def test_graph_profile_snapshot(monkeypatch):
+    client = TestClient(api.app)
+
+    monkeypatch.setattr(
+        graph_queries,
+        "fetch_entity_profile",
+        lambda name: {
+            "name": name,
+            "labels": ["Organization"],
+            "properties": {"name": name, "founded": "2001"},
+            "sources": [],
+            "related": [],
+            "snapshot": {"name": name, "hq": None, "founded": "2001", "ceo": None},
+        },
+    )
+
+    response = client.get("/graph/profile?name=TestCo")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["snapshot"]["name"] in {"TestCo", "Tesco"}

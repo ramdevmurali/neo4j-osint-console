@@ -128,7 +128,7 @@ export default function GraphPreview({ nodes, edges, height = 360 }: GraphPrevie
         graphData={data}
         cooldownTicks={40}
         nodeRelSize={6}
-        linkColor={() => "rgba(255,255,255,0.2)"}
+        linkColor={() => "rgba(125, 0, 6, 0.35)"}
         linkWidth={1}
         enableZoomPanInteraction={true}
         zoomToFit={false}
@@ -148,8 +148,34 @@ export default function GraphPreview({ nodes, edges, height = 360 }: GraphPrevie
           ctx.font = `${fontSize}px Inter, system-ui`;
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
-          ctx.fillStyle = "rgba(255,255,255,0.9)";
-          ctx.fillText(label, (node.x ?? 0) + r + 2, node.y ?? 0);
+
+          const textWidth = ctx.measureText(label).width;
+          const paddingX = 4 / globalScale;
+          const paddingY = 2 / globalScale;
+          const x = (node.x ?? 0) + r + 3;
+          const y = node.y ?? 0;
+
+          // halo/pill behind text for readability on light backgrounds
+          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          const rectX = x - paddingX;
+          const rectY = y - fontSize / 2 - paddingY;
+          const rectW = textWidth + paddingX * 2;
+          const rectH = fontSize + paddingY * 2;
+          const radius = 4 / globalScale;
+          ctx.beginPath();
+          ctx.moveTo(rectX + radius, rectY);
+          ctx.lineTo(rectX + rectW - radius, rectY);
+          ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + radius);
+          ctx.lineTo(rectX + rectW, rectY + rectH - radius);
+          ctx.quadraticCurveTo(rectX + rectW, rectY + rectH, rectX + rectW - radius, rectY + rectH);
+          ctx.lineTo(rectX + radius, rectY + rectH);
+          ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - radius);
+          ctx.lineTo(rectX, rectY + radius);
+          ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(17,24,39,0.95)";
+          ctx.fillText(label, x, y);
         }}
         nodeLabel={(node) => {
           const typed = node as GraphNode;

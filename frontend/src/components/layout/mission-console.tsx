@@ -10,6 +10,12 @@ type InsightPayload = {
     properties?: Record<string, unknown>;
     sources?: { url?: string; created_at?: number }[];
     related?: { name?: string; labels?: string[]; type?: string }[];
+    snapshot?: {
+      name?: string;
+      hq?: string | null;
+      founded?: string | null;
+      ceo?: string | null;
+    };
   } | null;
   competitors?: { competitor: string; reason?: string; source?: string }[];
   profile_result?: unknown;
@@ -37,6 +43,9 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [moodLoading, setMoodLoading] = useState(false);
   const [includeMood, setIncludeMood] = useState(false);
+  const [showAllCompetitors, setShowAllCompetitors] = useState(false);
+  const [showAllDrivers, setShowAllDrivers] = useState(false);
+  const [activeTab, setActiveTab] = useState<"competitors" | "mood">("competitors");
 
   const submitMission = async () => {
     const target = company.trim();
@@ -47,6 +56,9 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
     setMood(null);
     setMoodError(null);
     setMoodLoading(includeMood);
+    setShowAllCompetitors(false);
+    setShowAllDrivers(false);
+    setActiveTab("competitors");
 
     try {
       const response = await fetch("/api/agents/company-insight", {
@@ -92,7 +104,7 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
   };
 
   return (
-    <div className="reveal delay-1 rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-bg)] p-6 text-[var(--surface-ink)] shadow-lg backdrop-blur">
+    <div className="reveal delay-1 rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-bg)] p-5 text-[var(--surface-ink)] shadow-lg backdrop-blur">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-[var(--surface-muted)]">Mission Console</p>
@@ -100,11 +112,11 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-5 space-y-3">
         <label className="text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)]">Mission brief</label>
         <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-strong)] px-4 py-3 shadow-inner">
           <input
-            className="h-12 w-full bg-transparent text-sm text-[var(--surface-ink)] outline-none"
+            className="h-11 w-full bg-transparent text-sm text-[var(--surface-ink)] outline-none"
             placeholder="Enter a company (e.g., Meta Platforms, Inc.)"
             value={company}
             onChange={(event) => setCompany(event.target.value)}
@@ -115,7 +127,7 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
-            className="h-11 rounded-full bg-[var(--surface-ink)] px-5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-10 rounded-full bg-[var(--surface-ink)] px-5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
             onClick={submitMission}
             disabled={isLoading}
           >
@@ -134,115 +146,150 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
       </div>
 
       {error ? (
-        <div className="mt-5 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-xs text-[var(--surface-ink)]">
+        <div className="mt-4 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-xs text-[var(--surface-ink)]">
           {error}
         </div>
       ) : null}
 
       {insight ? (
-        <div className="mt-5 space-y-4">
+        <div className="mt-4 space-y-3">
           <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Profile</p>
-            {insight.profile ? (
-              <div className="mt-2 space-y-2">
-                <p className="text-lg font-semibold break-words">{insight.profile.name ?? "Saved to graph"}</p>
-                {insight.profile.related?.length ? (
-                  <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
-                    {insight.profile.related.slice(0, 8).map((r, idx) => (
-                      <span
-                        key={`${r.name}-${idx}`}
-                        className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]"
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Snapshot</p>
+            <div className="mt-2 space-y-3">
+              <p className="text-lg font-semibold break-words">
+                {insight.profile?.snapshot?.name ?? insight.profile?.name ?? company}
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
+                {insight.profile?.snapshot?.hq ? (
+                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
+                    HQ • {insight.profile.snapshot.hq}
+                  </span>
+                ) : null}
+                {insight.profile?.snapshot?.founded ? (
+                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
+                    Founded • {insight.profile.snapshot.founded}
+                  </span>
+                ) : null}
+                {insight.profile?.snapshot?.ceo ? (
+                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
+                    CEO • {insight.profile.snapshot.ceo}
+                  </span>
+                ) : null}
+                {!insight.profile?.snapshot?.hq &&
+                !insight.profile?.snapshot?.founded &&
+                !insight.profile?.snapshot?.ceo ? (
+                  <span className="text-[0.65rem] uppercase tracking-[0.2em] text-[var(--surface-muted)]">
+                    Snapshot data pending
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)]">
+                <button
+                  className={`rounded-full px-3 py-1 ${activeTab === "competitors" ? "bg-[var(--surface-ink)] text-white" : "bg-[var(--surface-bg-strong)] text-[var(--surface-ink)]"}`}
+                  onClick={() => setActiveTab("competitors")}
+                >
+                  Competitors
+                </button>
+                <button
+                  className={`rounded-full px-3 py-1 ${activeTab === "mood" ? "bg-[var(--surface-ink)] text-white" : "bg-[var(--surface-bg-strong)] text-[var(--surface-ink)]"}`}
+                  onClick={() => setActiveTab("mood")}
+                >
+                  Mood
+                </button>
+              </div>
+
+              {activeTab === "competitors" ? (
+                insight.competitors?.length ? (
+                  <ul className="space-y-2 text-sm text-[var(--surface-ink)]">
+                    {(showAllCompetitors ? insight.competitors : insight.competitors.slice(0, 3)).map((c, idx) => {
+                      const reason =
+                        !showAllCompetitors && c.reason && c.reason.length > 140
+                          ? `${c.reason.slice(0, 140)}…`
+                          : c.reason;
+                      return (
+                        <li key={`${c.competitor}-${idx}`} className="break-words">
+                          <span className="font-semibold">{c.competitor}</span>
+                          {reason ? ` — ${reason}` : ""}
+                          {c.source ? (
+                            <>
+                              {" "}
+                              <a className="text-[var(--surface-ink)] underline" href={c.source} target="_blank" rel="noreferrer">
+                                source
+                              </a>
+                            </>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                    {insight.competitors.length > 3 ? (
+                      <li>
+                        <button
+                          className="text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)] underline"
+                          onClick={() => setShowAllCompetitors((prev) => !prev)}
+                        >
+                          {showAllCompetitors ? "Show less" : "Show more"}
+                        </button>
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-[var(--surface-muted)]">No competitors returned.</p>
+                )
+              ) : includeMood ? (
+                moodLoading ? (
+                  <p className="text-sm text-[var(--surface-muted)]">Assessing mood...</p>
+                ) : moodError ? (
+                  <p className="text-sm text-[var(--surface-muted)]">{moodError}</p>
+                ) : mood ? (
+                  <div className="space-y-2 text-sm text-[var(--surface-ink)]">
+                    <p className="text-lg font-semibold">
+                      {mood.mood_label ?? "Mixed"}
+                      {typeof mood.confidence === "number" ? ` • ${mood.confidence.toFixed(2)}` : ""}
+                    </p>
+                    {mood.drivers?.length ? (
+                      <ul className="list-disc space-y-1 pl-5 text-xs text-[var(--surface-muted)]">
+                        {(showAllDrivers ? mood.drivers : mood.drivers.slice(0, 2)).map((driver, idx) => (
+                          <li key={`${driver}-${idx}`}>{driver}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {mood.drivers && mood.drivers.length > 2 ? (
+                      <button
+                        className="text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)] underline"
+                        onClick={() => setShowAllDrivers((prev) => !prev)}
                       >
-                        {r.name} {r.type ? `• ${r.type}` : ""}
-                      </span>
-                    ))}
+                        {showAllDrivers ? "Show less" : "Show more"}
+                      </button>
+                    ) : null}
+                    {mood.sources?.length ? (
+                      <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
+                        {mood.sources.slice(0, 2).map((source, idx) => (
+                          <a
+                            key={`${source.url}-${idx}`}
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]"
+                          >
+                            {source.title || "source"}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
-                  <p className="text-xs text-[var(--surface-muted)]">No related entities yet.</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--surface-muted)]">No profile returned.</p>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Competitors</p>
-            {insight.competitors?.length ? (
-              <ul className="mt-2 space-y-2 text-sm text-[var(--surface-ink)]">
-                {insight.competitors.map((c, idx) => (
-                  <li key={`${c.competitor}-${idx}`} className="break-words">
-                    <span className="font-semibold">{c.competitor}</span>
-                    {c.reason ? ` — ${c.reason}` : ""}
-                    {c.source ? (
-                      <>
-                        {" "}
-                        <a className="text-[var(--surface-ink)] underline" href={c.source} target="_blank" rel="noreferrer">
-                          source
-                        </a>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-[var(--surface-muted)]">No competitors returned.</p>
-            )}
-          </div>
-
-          {includeMood ? (
-            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Mood</p>
-              {moodLoading ? (
-                <p className="mt-2 text-sm text-[var(--surface-muted)]">Assessing mood...</p>
-              ) : moodError ? (
-                <p className="mt-2 text-sm text-[var(--surface-muted)]">{moodError}</p>
-              ) : mood ? (
-                <div className="mt-2 space-y-2 text-sm text-[var(--surface-ink)]">
-                  <p className="text-lg font-semibold">
-                    {mood.mood_label ?? "Mixed"}
-                    {typeof mood.confidence === "number" ? ` • ${mood.confidence.toFixed(2)}` : ""}
-                  </p>
-                  {mood.drivers?.length ? (
-                    <ul className="list-disc space-y-1 pl-5 text-xs text-[var(--surface-muted)]">
-                      {mood.drivers.map((driver, idx) => (
-                        <li key={`${driver}-${idx}`}>{driver}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {mood.sources?.length ? (
-                    <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
-                      {mood.sources.map((source, idx) => (
-                        <a
-                          key={`${source.url}-${idx}`}
-                          href={source.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]"
-                        >
-                          {source.title || "source"}
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                  <p className="text-sm text-[var(--surface-muted)]">No mood returned.</p>
+                )
               ) : (
-                <p className="mt-2 text-sm text-[var(--surface-muted)]">No mood returned.</p>
+                <p className="text-sm text-[var(--surface-muted)]">Enable mood to see sentiment signals.</p>
               )}
             </div>
-          ) : null}
-
-          {(insight.profile_result || insight.competitor_result) && (
-            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-xs text-[var(--surface-muted)]">
-              <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Raw agent output</p>
-              {insight.profile_result ? <pre className="mt-2 whitespace-pre-wrap break-words">{JSON.stringify(insight.profile_result, null, 2)}</pre> : null}
-              {insight.competitor_result ? <pre className="mt-2 whitespace-pre-wrap break-words">{JSON.stringify(insight.competitor_result, null, 2)}</pre> : null}
-            </div>
-          )}
+          </div>
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-3 text-xs text-[var(--surface-muted)]">
+      <div className="mt-5 grid gap-2 text-xs text-[var(--surface-muted)]">
         {highlights.map((item) => (
           <div key={item} className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[var(--surface-ink)]" />

@@ -90,12 +90,41 @@ def fetch_entity_profile(name: str) -> dict | None:
         if not rec:
             return None
         node = rec["e"]
+        props = dict(node)
+        related = rec["related"]
+
+        def pick_prop(keys: list[str]) -> str | None:
+            for key in keys:
+                value = props.get(key)
+                if value:
+                    return str(value)
+            return None
+
+        def find_related(label: str, rel_types: list[str]) -> str | None:
+            for item in related:
+                labels = item.get("labels") or []
+                rel_type = item.get("type")
+                if label in labels and (not rel_types or rel_type in rel_types):
+                    name_val = item.get("name")
+                    if name_val:
+                        return str(name_val)
+            return None
+
+        snapshot = {
+            "name": props.get("name"),
+            "hq": pick_prop(["hq", "headquarters", "headquarter", "headquarters_location", "location"])
+            or find_related("Location", ["HEADQUARTERED_IN", "LOCATED_IN", "BASED_IN"]),
+            "founded": pick_prop(["founded", "founded_year", "foundedAt", "founded_at", "established"]),
+            "ceo": pick_prop(["ceo", "chief_executive_officer"])
+            or find_related("Person", ["CEO_OF", "CHIEF_EXECUTIVE_OFFICER", "LEADS", "EXECUTIVE_OF"]),
+        }
         return {
             "name": node.get("name"),
             "labels": list(node.labels),
-            "properties": dict(node),
+            "properties": props,
             "sources": rec["sources"],
-            "related": rec["related"],
+            "related": related,
+            "snapshot": snapshot,
         }
 
 

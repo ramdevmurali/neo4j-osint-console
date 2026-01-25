@@ -86,7 +86,7 @@ export default function Home() {
       <div className="float-glow two" />
       <div className="grain" />
 
-      <main className="relative mx-auto flex w-full max-w-6xl flex-col gap-20 px-6 pb-24 pt-10 sm:px-10 lg:px-16">
+      <main className="relative mx-auto flex w-full max-w-6xl flex-col gap-14 px-6 pb-24 pt-10 sm:px-10 lg:px-16">
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="h-10 w-10 rounded-2xl bg-[var(--ink)] text-[var(--parchment)] flex items-center justify-center font-semibold">
@@ -104,8 +104,8 @@ export default function Home() {
           <ThemeToggle />
         </nav>
 
-        <section className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div className="flex flex-col gap-8">
+        <section className="space-y-10">
+          <div className="flex flex-col gap-6">
             <Pill>OSINT missions → Graph entities</Pill>
             <div className="space-y-6">
               <h1 className="reveal delay-1 font-[var(--font-display)] text-4xl leading-tight text-[var(--ink)] sm:text-5xl lg:text-6xl">
@@ -116,57 +116,74 @@ export default function Home() {
                 Drop a mission, watch the graph populate, and keep every source traceable.
               </p>
             </div>
-            <div className="reveal delay-3 flex flex-wrap items-center gap-4">
-              <button
-                className="h-12 rounded-full border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-6 text-sm font-semibold text-[var(--surface-ink)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
-                onClick={handleViewSample}
-                disabled={sampleLoading}
-              >
-                {sampleLoading ? "Loading..." : showGraph ? "Hide sample graph" : "View sample graph"}
-              </button>
-              <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--ink-muted)]">
-                Aura-ready • Neo4j
-              </div>
-            </div>
-            {sampleError ? (
-              <div className="reveal delay-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-sm text-[var(--ink)]">
-                {sampleError}
-              </div>
-            ) : null}
-            {showGraph && sampleSummary ? (
-              <div className="reveal delay-3 rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-sm text-[var(--ink)]">
-                <p className="text-xs uppercase tracking-[0.28em] text-[var(--ink-muted)]">
-                  Sample graph
-                </p>
-                <p className="mt-1 font-semibold">
-                  {sampleSummary.node_count} nodes · {sampleSummary.edge_count} edges
-                </p>
-                {sampleSummary.sample_nodes.length ? (
-                  <p className="mt-1 text-sm text-[var(--ink-muted)]">
-                    {sampleSummary.sample_nodes.join(" • ")}
-                  </p>
-                ) : null}
-                {sampleSummary.documents.length ? (
-                  <p className="mt-1 text-[var(--ink-muted)] text-xs">
-                    from {Math.min(sampleSummary.documents.length, 6)} recent sources
-                  </p>
-                ) : null}
-                <div className="mt-3">
-                  <GraphPreview nodes={graphNodes} edges={graphEdges} />
-                </div>
-              </div>
-            ) : null}
-            <div className="grid gap-4 sm:grid-cols-3">
-              {stats.map((stat) => (
-                <StatCard key={stat.label} value={stat.value} label={stat.label} />
-              ))}
-            </div>
-            {statsError ? (
-              <p className="text-xs text-[var(--ink-muted)]">{statsError}</p>
-            ) : null}
           </div>
 
-          <MissionConsole highlights={missionHighlights.slice(0, 1)} />
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+            <div className="space-y-6">
+              <div className="reveal delay-3 flex flex-wrap items-center gap-4">
+                <button
+                  className="h-12 rounded-full border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-6 text-sm font-semibold text-[var(--surface-ink)] transition hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+                  onClick={handleViewSample}
+                  disabled={sampleLoading}
+                >
+                  {sampleLoading ? "Loading..." : showGraph ? "Hide sample graph" : "View sample graph"}
+                </button>
+                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--ink-muted)]">
+                  Aura-ready • Neo4j
+                </div>
+              </div>
+
+              <div className="reveal delay-3 rounded-3xl border border-[var(--surface-border)] bg-[var(--surface-bg)] p-5 text-[var(--surface-ink)] shadow-lg backdrop-blur">
+                <p className="text-xs uppercase tracking-[0.28em] text-[var(--surface-muted)]">
+                  Sample graph
+                </p>
+                {sampleSummary ? (
+                  <>
+                    <p className="mt-1 font-semibold">
+                      {sampleSummary.node_count} nodes · {sampleSummary.edge_count} edges
+                    </p>
+                    {sampleSummary.sample_nodes.length ? (
+                    <p className="mt-1 text-sm text-[var(--surface-muted)]">
+                      {sampleSummary.sample_nodes.join(" • ")}
+                    </p>
+                  ) : null}
+                  {sampleSummary.documents.length ? (
+                    <p className="mt-1 text-[var(--surface-muted)] text-xs">
+                      from {Math.min(sampleSummary.documents.length, 6)} recent sources
+                    </p>
+                  ) : null}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-[var(--surface-muted)]">
+                    Load a sample to preview the graph.
+                  </p>
+                )}
+                {sampleError ? (
+                  <p className="mt-2 text-sm text-[var(--surface-ink)]">{sampleError}</p>
+                ) : null}
+                <div className="mt-3">
+                  {showGraph && sampleSummary ? (
+                    <GraphPreview nodes={graphNodes} edges={graphEdges} />
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-8 text-center text-xs text-[var(--surface-muted)]">
+                      Sample graph hidden.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {stats.map((stat) => (
+                  <StatCard key={stat.label} value={stat.value} label={stat.label} />
+                ))}
+              </div>
+              {statsError ? (
+                <p className="text-xs text-[var(--ink-muted)]">{statsError}</p>
+              ) : null}
+            </div>
+
+            <MissionConsole highlights={missionHighlights.slice(0, 1)} />
+          </div>
         </section>
 
       </main>
