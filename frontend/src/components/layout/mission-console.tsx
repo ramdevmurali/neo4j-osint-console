@@ -49,6 +49,11 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
     try {
       const resp = await fetch(url, { ...options, signal: controller.signal });
       return resp;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error("Request timed out");
+      }
+      throw err;
     } finally {
       clearTimeout(id);
     }
@@ -101,7 +106,11 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
               setMood(moodData);
               setMoodStatus(null);
             } catch (err) {
-              setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
+              if (err instanceof Error && err.message === "Request timed out") {
+                setMoodError("Mood request timed out");
+              } else {
+                setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
+              }
               setMoodStatus("Mood unavailable (timeout or error)");
             } finally {
               setMoodLoading(false);
@@ -111,8 +120,13 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
       await Promise.all([insightPromise, moodPromise]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mission failed");
-      setInsightStatus("Insight failed");
+      if (err instanceof Error && err.message === "Request timed out") {
+        setError("Insight request timed out");
+        setInsightStatus("Insight timed out");
+      } else {
+        setError(err instanceof Error ? err.message : "Mission failed");
+        setInsightStatus("Insight failed");
+      }
     } finally {
       setIsLoading(false);
     }
