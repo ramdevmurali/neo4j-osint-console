@@ -12,6 +12,7 @@ from src.services.insight import (
     run_company_insight,
     run_competitor_flow,
 )
+from src.services.mood import get_company_mood
 
 logger = logging.getLogger("agents")
 router = APIRouter()
@@ -30,6 +31,11 @@ class MissionRequest(BaseModel):
 class CompanyRequest(BaseModel):
     company: str
     thread_id: str | None = None
+
+
+class MoodRequest(BaseModel):
+    company: str
+    timeframe: str | None = "90d"
 
 
 @router.post("/run-mission")
@@ -94,4 +100,22 @@ async def company_insight(req: CompanyRequest):
         raise HTTPException(status_code=504, detail="Company insight timed out")
     except Exception as e:
         logger.error(f"Company insight error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/company-mood")
+async def company_mood(req: MoodRequest):
+    company = _require_company(req.company)
+    timeframe = req.timeframe or "90d"
+
+    try:
+        data = await asyncio.wait_for(
+            run_in_threadpool(get_company_mood, company, timeframe),
+            timeout=Config.RUN_MISSION_TIMEOUT,
+        )
+        return {"status": "success", **data}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Company mood timed out")
+    except Exception as e:
+        logger.error(f"Company mood error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

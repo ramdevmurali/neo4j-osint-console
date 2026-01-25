@@ -16,6 +16,14 @@ type InsightPayload = {
   competitor_result?: unknown;
 };
 
+type MoodPayload = {
+  mood_label?: string;
+  confidence?: number;
+  drivers?: string[];
+  sources?: { title?: string; url?: string }[];
+  timeframe?: string;
+};
+
 type MissionConsoleProps = {
   highlights: string[];
 };
@@ -23,8 +31,12 @@ type MissionConsoleProps = {
 export default function MissionConsole({ highlights }: MissionConsoleProps) {
   const [company, setCompany] = useState("");
   const [insight, setInsight] = useState<InsightPayload | null>(null);
+  const [mood, setMood] = useState<MoodPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [moodError, setMoodError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [moodLoading, setMoodLoading] = useState(false);
+  const [includeMood, setIncludeMood] = useState(false);
 
   const submitMission = async () => {
     const target = company.trim();
@@ -32,6 +44,9 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
     setIsLoading(true);
     setError(null);
     setInsight(null);
+    setMood(null);
+    setMoodError(null);
+    setMoodLoading(includeMood);
 
     try {
       const response = await fetch("/api/agents/company-insight", {
@@ -47,6 +62,28 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
       const data = (await response.json()) as InsightPayload;
       setInsight(data);
+
+      if (includeMood) {
+        try {
+          const moodResponse = await fetch("/api/agents/company-mood", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ company: target, timeframe: "90d" }),
+          });
+
+          if (!moodResponse.ok) {
+            const text = await moodResponse.text();
+            throw new Error(text || "Mood fetch failed");
+          }
+
+          const moodData = (await moodResponse.json()) as MoodPayload;
+          setMood(moodData);
+        } catch (err) {
+          setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
+        } finally {
+          setMoodLoading(false);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mission failed");
     } finally {
@@ -84,6 +121,15 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
           >
             {isLoading ? "Dispatching..." : "Dispatch mission"}
           </button>
+          <label className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)]">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-[var(--surface-border)] bg-transparent text-[var(--surface-ink)]"
+              checked={includeMood}
+              onChange={(event) => setIncludeMood(event.target.checked)}
+            />
+            Include mood
+          </label>
         </div>
       </div>
 
@@ -143,6 +189,48 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
               <p className="mt-2 text-sm text-[var(--surface-muted)]">No competitors returned.</p>
             )}
           </div>
+
+          {includeMood ? (
+            <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
+              <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Mood</p>
+              {moodLoading ? (
+                <p className="mt-2 text-sm text-[var(--surface-muted)]">Assessing mood...</p>
+              ) : moodError ? (
+                <p className="mt-2 text-sm text-[var(--surface-muted)]">{moodError}</p>
+              ) : mood ? (
+                <div className="mt-2 space-y-2 text-sm text-[var(--surface-ink)]">
+                  <p className="text-lg font-semibold">
+                    {mood.mood_label ?? "Mixed"}
+                    {typeof mood.confidence === "number" ? ` • ${mood.confidence.toFixed(2)}` : ""}
+                  </p>
+                  {mood.drivers?.length ? (
+                    <ul className="list-disc space-y-1 pl-5 text-xs text-[var(--surface-muted)]">
+                      {mood.drivers.map((driver, idx) => (
+                        <li key={`${driver}-${idx}`}>{driver}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {mood.sources?.length ? (
+                    <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
+                      {mood.sources.map((source, idx) => (
+                        <a
+                          key={`${source.url}-${idx}`}
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]"
+                        >
+                          {source.title || "source"}
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--surface-muted)]">No mood returned.</p>
+              )}
+            </div>
+          ) : null}
 
           {(insight.profile_result || insight.competitor_result) && (
             <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-xs text-[var(--surface-muted)]">

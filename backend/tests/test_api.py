@@ -29,3 +29,25 @@ def test_run_mission_flow(monkeypatch):
     assert "result" in data
     assert "thread_id" in data
     assert data["status"] == "success"
+
+
+def test_company_mood_endpoint(monkeypatch):
+    client = TestClient(api.app)
+
+    monkeypatch.setattr(
+        agents,
+        "get_company_mood",
+        lambda company, timeframe="90d": {
+            "mood_label": "Neutral",
+            "confidence": 0.5,
+            "drivers": ["Test driver"],
+            "sources": [],
+            "timeframe": timeframe,
+        },
+    )
+
+    response = client.post("/agents/company-mood", json={"company": "TestCo", "timeframe": "30d"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["mood_label"] == "Neutral"
