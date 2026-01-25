@@ -10,12 +10,6 @@ type InsightPayload = {
     properties?: Record<string, unknown>;
     sources?: { url?: string; created_at?: number }[];
     related?: { name?: string; labels?: string[]; type?: string }[];
-    snapshot?: {
-      name?: string;
-      hq?: string | null;
-      founded?: string | null;
-      ceo?: string | null;
-    };
   } | null;
   competitors?: { competitor: string; reason?: string; source?: string }[];
   profile_result?: unknown;
@@ -154,36 +148,11 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
       {insight ? (
         <div className="mt-4 space-y-3">
           <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Snapshot</p>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Company</p>
             <div className="mt-2 space-y-3">
               <p className="text-lg font-semibold break-words">
-                {insight.profile?.snapshot?.name ?? insight.profile?.name ?? company}
+                {insight.profile?.name ?? company}
               </p>
-              <div className="flex flex-wrap gap-2 text-xs text-[var(--surface-muted)]">
-                {insight.profile?.snapshot?.hq ? (
-                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
-                    HQ • {insight.profile.snapshot.hq}
-                  </span>
-                ) : null}
-                {insight.profile?.snapshot?.founded ? (
-                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
-                    Founded • {insight.profile.snapshot.founded}
-                  </span>
-                ) : null}
-                {insight.profile?.snapshot?.ceo ? (
-                  <span className="rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-[var(--surface-ink)]">
-                    CEO • {insight.profile.snapshot.ceo}
-                  </span>
-                ) : null}
-                {!insight.profile?.snapshot?.hq &&
-                !insight.profile?.snapshot?.founded &&
-                !insight.profile?.snapshot?.ceo ? (
-                  <span className="text-[0.65rem] uppercase tracking-[0.2em] text-[var(--surface-muted)]">
-                    Snapshot data pending
-                  </span>
-                ) : null}
-              </div>
-
               <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)]">
                 <button
                   className={`rounded-full px-3 py-1 ${activeTab === "competitors" ? "bg-[var(--surface-ink)] text-white" : "bg-[var(--surface-bg-strong)] text-[var(--surface-ink)]"}`}

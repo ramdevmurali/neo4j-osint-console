@@ -1,4 +1,3 @@
-import json
 from fastapi.testclient import TestClient
 import src.api as api
 import src.routes.agents as agents
@@ -56,28 +55,6 @@ def test_company_mood_endpoint(monkeypatch):
     assert payload["mood_label"] == "Neutral"
 
 
-def test_graph_profile_snapshot(monkeypatch):
-    client = TestClient(api.app)
-
-    monkeypatch.setattr(
-        graph_queries,
-        "fetch_entity_profile",
-        lambda name: {
-            "name": name,
-            "labels": ["Organization"],
-            "properties": {"name": name, "founded": "2001"},
-            "sources": [],
-            "related": [],
-            "snapshot": {"name": name, "hq": None, "founded": "2001", "ceo": None},
-        },
-    )
-
-    response = client.get("/graph/profile?name=TestCo")
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["snapshot"]["name"] in {"TestCo", "Tesco"}
-
-
 def test_run_agent_backoff(monkeypatch):
     calls = {"count": 0}
 
@@ -96,27 +73,3 @@ def test_run_agent_backoff(monkeypatch):
     # semaphore shouldn't block single call; ensure backoff retries then succeeds
     result = agent_module.run_agent("test", thread_id=None)
     assert result == "done"
-
-
-def test_company_snapshot_endpoint(monkeypatch):
-    client = TestClient(api.app)
-
-    def dummy_run_agent(prompt, thread_id=None):
-        return json.dumps(
-            {
-                "name": "DemoCo",
-                "hq": "Berlin",
-                "founded": "2019",
-                "ceo": "Ada Lovelace",
-                "significance": "Builds AI developer tools.",
-            }
-        )
-
-    monkeypatch.setattr(agents, "run_agent_direct", dummy_run_agent)
-
-    resp = client.post("/agents/company-snapshot", json={"company": "DemoCo"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "success"
-    assert data["snapshot"]["name"] == "DemoCo"
-    assert data["snapshot"]["hq"] == "Berlin"
