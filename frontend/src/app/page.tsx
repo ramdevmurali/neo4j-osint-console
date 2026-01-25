@@ -7,6 +7,15 @@ import ThemeToggle from "@/components/ui/theme-toggle";
 import GraphPreview from "@/components/ui/graph-preview";
 import { missionHighlights, stats as staticStats } from "@/lib/content";
 import { useEffect, useState } from "react";
+import { fetchJson } from "@/lib/fetcher";
+
+type GraphSample = {
+  nodes?: unknown[];
+  edges?: unknown[];
+  node_count?: number;
+  edge_count?: number;
+  documents?: { url?: string }[];
+};
 
 export default function Home() {
   const [sampleSummary, setSampleSummary] = useState<{
@@ -50,11 +59,10 @@ export default function Home() {
     setSampleLoading(true);
     setSampleError(null);
     try {
-      const resp = await fetch(`/api/run-mission?doc_limit=5`);
-      if (!resp.ok) {
-        throw new Error(`Backend responded ${resp.status}`);
+      const { response, data } = await fetchJson<GraphSample>(`/api/run-mission?doc_limit=5`);
+      if (!response.ok) {
+        throw new Error(`Backend responded ${response.status}`);
       }
-      const data = await resp.json();
       const names: string[] = [];
       if (Array.isArray(data.nodes)) {
         for (const node of data.nodes.slice(0, 5)) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fetchJson } from "@/lib/fetcher";
 
 type InsightPayload = {
   status?: string;
@@ -54,35 +55,33 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
     try {
       const insightPromise = (async () => {
-        const response = await fetch("/api/agents/company-insight", {
+        const { response, data } = await fetchJson<InsightPayload>("/api/agents/company-insight", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ company: target }),
         });
         if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || "Mission failed");
+          const msg = typeof data === "string" && data ? data : "Mission failed";
+          throw new Error(msg);
         }
-        const data = (await response.json()) as InsightPayload;
-        setInsight(data);
+        setInsight(data as InsightPayload);
       })();
 
       const moodPromise = includeMood
         ? (async () => {
             try {
-              const moodResponse = await fetch("/api/agents/company-mood", {
+              const { response, data } = await fetchJson<MoodPayload>("/api/agents/company-mood", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ company: target, timeframe: "90d" }),
               });
 
-              if (!moodResponse.ok) {
-                const text = await moodResponse.text();
-                throw new Error(text || "Mood fetch failed");
+              if (!response.ok) {
+                const msg = typeof data === "string" && data ? data : "Mood fetch failed";
+                throw new Error(msg);
               }
 
-              const moodData = (await moodResponse.json()) as MoodPayload;
-              setMood(moodData);
+              setMood(data as MoodPayload);
             } catch (err) {
               setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
             } finally {
