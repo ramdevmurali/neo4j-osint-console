@@ -34,6 +34,8 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
   const [mood, setMood] = useState<MoodPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [moodError, setMoodError] = useState<string | null>(null);
+   const [insightStatus, setInsightStatus] = useState<string | null>(null);
+   const [moodStatus, setMoodStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [moodLoading, setMoodLoading] = useState(false);
   const [includeMood, setIncludeMood] = useState(false);
@@ -41,12 +43,25 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
   const [showAllDrivers, setShowAllDrivers] = useState(false);
   const [activeTab, setActiveTab] = useState<"competitors" | "mood">("competitors");
 
+  const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 9000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { ...options, signal: controller.signal });
+      return resp;
+    } finally {
+      clearTimeout(id);
+    }
+  };
+
   const submitMission = async () => {
     const target = company.trim();
     if (!target) return;
     setIsLoading(true);
     setError(null);
     setMoodError(null);
+    setInsightStatus("Loading…");
+    setMoodStatus(includeMood ? "Loading…" : null);
     setMoodLoading(includeMood);
     setShowAllCompetitors(false);
     setShowAllDrivers(false);
@@ -54,7 +69,7 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
     try {
       const insightPromise = (async () => {
-        const response = await fetch("/api/agents/company-insight", {
+        const response = await fetchWithTimeout("/api/agents/company-insight", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ company: target }),
@@ -65,16 +80,17 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
         }
         const data = (await response.json()) as InsightPayload;
         setInsight(data);
+        setInsightStatus(null);
       })();
 
       const moodPromise = includeMood
         ? (async () => {
             try {
-              const moodResponse = await fetch("/api/agents/company-mood", {
+              const moodResponse = await fetchWithTimeout("/api/agents/company-mood", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ company: target, timeframe: "90d" }),
-              });
+              }, 10000);
 
               if (!moodResponse.ok) {
                 const text = await moodResponse.text();
@@ -83,8 +99,10 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
 
               const moodData = (await moodResponse.json()) as MoodPayload;
               setMood(moodData);
+              setMoodStatus(null);
             } catch (err) {
               setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
+              setMoodStatus("Mood unavailable (timeout or error)");
             } finally {
               setMoodLoading(false);
             }
@@ -94,6 +112,7 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
       await Promise.all([insightPromise, moodPromise]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mission failed");
+      setInsightStatus("Insight failed");
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +187,9 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
               <p className="text-lg font-semibold break-words">
                 {insight.profile?.name ?? company}
               </p>
+              {insightStatus ? (
+                <p className="text-xs text-[var(--surface-muted)]">{insightStatus}</p>
+              ) : null}
               {isLoading ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-xs text-[var(--surface-muted)]">
                   Updating…
@@ -236,6 +258,9 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
                       {mood.mood_label ?? "Mixed"}
                       {typeof mood.confidence === "number" ? ` • ${mood.confidence.toFixed(2)}` : ""}
                     </p>
+                    {moodStatus ? (
+                      <p className="text-xs text-[var(--surface-muted)]">{moodStatus}</p>
+                    ) : null}
                     {mood.drivers?.length ? (
                       <ul className="list-disc space-y-1 pl-5 text-xs text-[var(--surface-muted)]">
                         {(showAllDrivers ? mood.drivers : mood.drivers.slice(0, 2)).map((driver, idx) => (
