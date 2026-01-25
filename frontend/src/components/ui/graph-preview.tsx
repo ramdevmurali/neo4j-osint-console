@@ -156,7 +156,7 @@ export default function GraphPreview({ nodes, edges, height = 360 }: GraphPrevie
           const y = node.y ?? 0;
 
           // halo/pill behind text for readability on light backgrounds
-          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.fillStyle = "rgba(255,255,255,0.92)";
           const rectX = x - paddingX;
           const rectY = y - fontSize / 2 - paddingY;
           const rectW = textWidth + paddingX * 2;
@@ -174,7 +174,7 @@ export default function GraphPreview({ nodes, edges, height = 360 }: GraphPrevie
           ctx.quadraticCurveTo(rectX, rectY, rectX + radius, rectY);
           ctx.fill();
 
-          ctx.fillStyle = "rgba(17,24,39,0.95)";
+          ctx.fillStyle = "rgba(12,20,32,0.98)";
           ctx.fillText(label, x, y);
         }}
         nodeLabel={(node) => {

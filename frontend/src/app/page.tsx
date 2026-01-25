@@ -50,14 +50,14 @@ export default function Home() {
     setSampleLoading(true);
     setSampleError(null);
     try {
-      const resp = await fetch(`/api/run-mission?doc_limit=6`);
+      const resp = await fetch(`/api/run-mission?doc_limit=5`);
       if (!resp.ok) {
         throw new Error(`Backend responded ${resp.status}`);
       }
       const data = await resp.json();
       const names: string[] = [];
       if (Array.isArray(data.nodes)) {
-        for (const node of data.nodes.slice(0, 6)) {
+        for (const node of data.nodes.slice(0, 5)) {
           if (node && typeof node === "object" && "name" in node) {
             const name = String((node as { name?: unknown }).name ?? "");
             if (name) names.push(name);
@@ -137,39 +137,49 @@ export default function Home() {
                 <p className="text-xs uppercase tracking-[0.28em] text-[var(--surface-muted)]">
                   Sample graph
                 </p>
-                {sampleSummary ? (
+                {sampleLoading ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="h-5 w-40 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+                    <div className="h-4 w-64 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+                    <div className="h-3 w-48 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+                    <div className="mt-3 h-64 animate-pulse rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-strong)]" />
+                  </div>
+                ) : sampleSummary ? (
                   <>
                     <p className="mt-1 font-semibold">
                       {sampleSummary.node_count} nodes · {sampleSummary.edge_count} edges
                     </p>
                     {sampleSummary.sample_nodes.length ? (
-                    <p className="mt-1 text-sm text-[var(--surface-muted)]">
-                      {sampleSummary.sample_nodes.join(" • ")}
-                    </p>
-                  ) : null}
-                  {sampleSummary.documents.length ? (
-                    <p className="mt-1 text-[var(--surface-muted)] text-xs">
-                      from {Math.min(sampleSummary.documents.length, 6)} recent sources
-                    </p>
-                  ) : null}
+                      <p className="mt-1 text-sm text-[var(--surface-muted)]">
+                        {sampleSummary.sample_nodes.join(" • ")}
+                      </p>
+                    ) : null}
+                    {sampleSummary.documents.length ? (
+                      <p className="mt-1 text-[var(--surface-muted)] text-xs">
+                        from {Math.min(sampleSummary.documents.length, 5)} recent sources
+                      </p>
+                    ) : null}
+                    {sampleError ? (
+                      <p className="mt-2 text-sm text-[var(--surface-ink)]">{sampleError}</p>
+                    ) : null}
+                    <div className="mt-3">
+                      {showGraph ? (
+                        <GraphPreview nodes={graphNodes} edges={graphEdges} />
+                      ) : (
+                        <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-8 text-center text-xs text-[var(--surface-muted)]">
+                          Sample graph hidden.
+                        </div>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-[var(--surface-muted)]">
                     Load a sample to preview the graph.
                   </p>
                 )}
-                {sampleError ? (
+                {sampleError && !sampleLoading ? (
                   <p className="mt-2 text-sm text-[var(--surface-ink)]">{sampleError}</p>
                 ) : null}
-                <div className="mt-3">
-                  {showGraph && sampleSummary ? (
-                    <GraphPreview nodes={graphNodes} edges={graphEdges} />
-                  ) : (
-                    <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-8 text-center text-xs text-[var(--surface-muted)]">
-                      Sample graph hidden.
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">

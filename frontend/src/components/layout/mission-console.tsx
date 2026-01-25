@@ -46,8 +46,6 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
     if (!target) return;
     setIsLoading(true);
     setError(null);
-    setInsight(null);
-    setMood(null);
     setMoodError(null);
     setMoodLoading(includeMood);
     setShowAllCompetitors(false);
@@ -55,41 +53,45 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
     setActiveTab("competitors");
 
     try {
-      const response = await fetch("/api/agents/company-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company: target }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Mission failed");
-      }
-
-      const data = (await response.json()) as InsightPayload;
-      setInsight(data);
-
-      if (includeMood) {
-        try {
-          const moodResponse = await fetch("/api/agents/company-mood", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ company: target, timeframe: "90d" }),
-          });
-
-          if (!moodResponse.ok) {
-            const text = await moodResponse.text();
-            throw new Error(text || "Mood fetch failed");
-          }
-
-          const moodData = (await moodResponse.json()) as MoodPayload;
-          setMood(moodData);
-        } catch (err) {
-          setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
-        } finally {
-          setMoodLoading(false);
+      const insightPromise = (async () => {
+        const response = await fetch("/api/agents/company-insight", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ company: target }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || "Mission failed");
         }
-      }
+        const data = (await response.json()) as InsightPayload;
+        setInsight(data);
+      })();
+
+      const moodPromise = includeMood
+        ? (async () => {
+            try {
+              const moodResponse = await fetch("/api/agents/company-mood", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ company: target, timeframe: "90d" }),
+              });
+
+              if (!moodResponse.ok) {
+                const text = await moodResponse.text();
+                throw new Error(text || "Mood fetch failed");
+              }
+
+              const moodData = (await moodResponse.json()) as MoodPayload;
+              setMood(moodData);
+            } catch (err) {
+              setMoodError(err instanceof Error ? err.message : "Mood fetch failed");
+            } finally {
+              setMoodLoading(false);
+            }
+          })()
+        : Promise.resolve();
+
+      await Promise.all([insightPromise, moodPromise]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Mission failed");
     } finally {
@@ -136,6 +138,7 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
             />
             Include mood
           </label>
+          <span className="text-[0.65rem] text-[var(--surface-muted)]">Mood adds ~8–12s</span>
         </div>
       </div>
 
@@ -145,7 +148,19 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
         </div>
       ) : null}
 
-      {insight ? (
+      {isLoading && !insight ? (
+        <div className="mt-4 space-y-3">
+          <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
+            <div className="h-4 w-28 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+            <div className="mt-3 h-5 w-48 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="h-3 w-32 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+              <div className="h-3 w-40 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+              <div className="h-3 w-28 animate-pulse rounded bg-[var(--surface-bg-strong)]" />
+            </div>
+          </div>
+        </div>
+      ) : insight ? (
         <div className="mt-4 space-y-3">
           <div className="rounded-2xl border border-[var(--surface-border)] bg-[var(--surface-bg-soft)] px-4 py-3 text-[var(--surface-ink)]">
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--surface-muted)]">Company</p>
@@ -153,6 +168,11 @@ export default function MissionConsole({ highlights }: MissionConsoleProps) {
               <p className="text-lg font-semibold break-words">
                 {insight.profile?.name ?? company}
               </p>
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2 rounded-full bg-[var(--surface-bg-strong)] px-3 py-1 text-xs text-[var(--surface-muted)]">
+                  Updating…
+                </span>
+              ) : null}
               <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[var(--surface-muted)]">
                 <button
                   className={`rounded-full px-3 py-1 ${activeTab === "competitors" ? "bg-[var(--surface-ink)] text-white" : "bg-[var(--surface-bg-strong)] text-[var(--surface-ink)]"}`}
