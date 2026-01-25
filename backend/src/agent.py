@@ -1,5 +1,8 @@
 import logging
 import json
+import random
+import time
+import threading
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
@@ -27,6 +30,25 @@ RULES:
 """
 # Initialize Memory (In-RAM persistence)
 _agent_executor = None
+_llm_semaphore = threading.BoundedSemaphore(3)
+
+
+def _invoke_with_backoff(agent_executor, payload, thread_id: str | None):
+    """Invoke the agent with capped concurrency and jittered backoff on 429/503."""
+    backoff_base = 1.0
+    max_retries = 3
+    for attempt in range(max_retries + 1):
+        try:
+            if thread_id:
+                return agent_executor.invoke(payload, config={"configurable": {"thread_id": thread_id}})
+            return agent_executor.invoke(payload)
+        except Exception as exc:
+            msg = str(exc)
+            retriable = any(code in msg for code in ["429", "RESOURCE_EXHAUSTED", "quota", "temporarily unavailable", "503"])
+            if not retriable or attempt >= max_retries:
+                raise
+            sleep_for = backoff_base * (2**attempt) + random.uniform(0, 0.5)
+            time.sleep(sleep_for)
 
 def _build_agent():
     llm = ChatGoogleGenerativeAI(
@@ -53,10 +75,8 @@ def get_agent_executor():
 def run_agent(task: str, thread_id: str | None = None) -> str:
     agent_executor = get_agent_executor()
     payload = {"messages": [("user", task)]}
-    if thread_id:
-        result = agent_executor.invoke(payload, config={"configurable": {"thread_id": thread_id}})
-    else:
-        result = agent_executor.invoke(payload)
+    with _llm_semaphore:
+        result = _invoke_with_backoff(agent_executor, payload, thread_id)
 
     last_msg = result["messages"][-1]
     content = last_msg.content

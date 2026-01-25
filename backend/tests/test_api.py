@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 import src.api as api
 import src.routes.agents as agents
 import src.services.graph_queries as graph_queries
+import src.agent as agent_module
 
 def test_health_check():
     client = TestClient(api.app)
@@ -74,3 +75,23 @@ def test_graph_profile_snapshot(monkeypatch):
     assert response.status_code == 200
     payload = response.json()
     assert payload["snapshot"]["name"] in {"TestCo", "Tesco"}
+
+
+def test_run_agent_backoff(monkeypatch):
+    calls = {"count": 0}
+
+    class DummyMsg:
+        def __init__(self, content: str):
+            self.content = content
+
+    class DummyExecutor:
+        def invoke(self, payload, config=None):
+            calls["count"] += 1
+            if calls["count"] < 2:
+                raise Exception("429 RESOURCE_EXHAUSTED")
+            return {"messages": [DummyMsg("done")]}
+
+    monkeypatch.setattr(agent_module, "get_agent_executor", lambda: DummyExecutor())
+    # semaphore shouldn't block single call; ensure backoff retries then succeeds
+    result = agent_module.run_agent("test", thread_id=None)
+    assert result == "done"
