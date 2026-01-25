@@ -1,3 +1,4 @@
+import json
 from fastapi.testclient import TestClient
 import src.api as api
 import src.routes.agents as agents
@@ -95,3 +96,27 @@ def test_run_agent_backoff(monkeypatch):
     # semaphore shouldn't block single call; ensure backoff retries then succeeds
     result = agent_module.run_agent("test", thread_id=None)
     assert result == "done"
+
+
+def test_company_snapshot_endpoint(monkeypatch):
+    client = TestClient(api.app)
+
+    def dummy_run_agent(prompt, thread_id=None):
+        return json.dumps(
+            {
+                "name": "DemoCo",
+                "hq": "Berlin",
+                "founded": "2019",
+                "ceo": "Ada Lovelace",
+                "significance": "Builds AI developer tools.",
+            }
+        )
+
+    monkeypatch.setattr(agents, "run_agent_direct", dummy_run_agent)
+
+    resp = client.post("/agents/company-snapshot", json={"company": "DemoCo"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
+    assert data["snapshot"]["name"] == "DemoCo"
+    assert data["snapshot"]["hq"] == "Berlin"

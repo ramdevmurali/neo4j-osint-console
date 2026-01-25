@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import uuid
+import json
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
@@ -12,6 +13,8 @@ from src.services.insight import (
     run_company_insight,
     run_competitor_flow,
 )
+from src.services.insight import build_snapshot_prompt  # snapshot prompt
+from src.agent import run_agent as run_agent_direct  # for snapshot
 from src.services.mood import get_company_mood
 
 logger = logging.getLogger("agents")
@@ -36,6 +39,10 @@ class CompanyRequest(BaseModel):
 class MoodRequest(BaseModel):
     company: str
     timeframe: str | None = "90d"
+
+
+class SnapshotRequest(BaseModel):
+    company: str
 
 
 @router.post("/run-mission")
@@ -118,4 +125,37 @@ async def company_mood(req: MoodRequest):
         raise HTTPException(status_code=504, detail="Company mood timed out")
     except Exception as e:
         logger.error(f"Company mood error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/company-snapshot")
+async def company_snapshot(req: SnapshotRequest):
+    company = _require_company(req.company)
+    prompt = build_snapshot_prompt(company)
+    try:
+        content = await asyncio.wait_for(
+            run_in_threadpool(run_agent_direct, prompt, None),
+            timeout=Config.RUN_MISSION_TIMEOUT,
+        )
+        # Expect JSON-ish content; but keep minimal: if it's a string, wrap.
+        if isinstance(content, str):
+            try:
+                data = json.loads(content)
+            except Exception:
+                data = {"significance": content}
+        else:
+            data = content
+
+        snapshot = {
+            "name": data.get("name") or company,
+            "hq": data.get("hq"),
+            "founded": data.get("founded"),
+            "ceo": data.get("ceo"),
+            "significance": data.get("significance"),
+        }
+        return {"status": "success", "snapshot": snapshot}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Snapshot timed out")
+    except Exception as e:
+        logger.error(f"Company snapshot error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

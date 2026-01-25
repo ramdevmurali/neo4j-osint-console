@@ -36,6 +36,15 @@ def build_competitor_fallback_prompt(company: str) -> str:
     )
 
 
+def build_snapshot_prompt(company: str) -> str:
+    return (
+        f"Provide a concise company snapshot for '{company}'. "
+        "Return JSON with keys: name, hq, founded, ceo, significance. "
+        "Use a single short sentence for significance (what the company does / known for). "
+        "Keep values as plain strings; no arrays or objects. Do not include extra keys."
+    )
+
+
 def filter_competitors(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for rec in items:
