@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from src.graph_db import GraphManager
+from src.constants import SAMPLE_DOC_LIMIT
 from src.services.graph_queries import fetch_competitors, fetch_entity_profile
 
 logger = logging.getLogger("graph")
@@ -17,7 +18,7 @@ def _require_param(value: str | None, label: str) -> str:
 
 
 @router.get("/graph/sample")
-async def graph_sample(doc_limit: int = 5):
+async def graph_sample(doc_limit: int = SAMPLE_DOC_LIMIT):
     db = GraphManager()
 
     def query():

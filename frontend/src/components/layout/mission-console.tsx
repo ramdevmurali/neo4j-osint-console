@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { fetchJson } from "@/lib/fetcher";
-
-const COMPETITOR_DISPLAY_CAP = 4;
-const MOOD_DRIVERS_DISPLAY_CAP = 2;
+import { COMPETITOR_DISPLAY_CAP, MOOD_DRIVERS_DISPLAY_CAP } from "@/lib/constants";
 
 type InsightPayload = {
   status?: string;

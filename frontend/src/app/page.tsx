@@ -8,8 +8,7 @@ import GraphPreview from "@/components/ui/graph-preview";
 import { missionHighlights, stats as staticStats } from "@/lib/content";
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetcher";
-
-const SAMPLE_DOC_LIMIT = 5;
+import { SAMPLE_DOC_LIMIT } from "@/lib/constants";
 
 type GraphSample = {
   nodes?: unknown[];

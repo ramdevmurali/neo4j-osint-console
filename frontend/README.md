@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This frontend is a Next.js app for the Project Gotham intelligence console.
+
+- Backend: FastAPI + LangGraph + Neo4j (see backend/).
+- Frontend: mission console UI, graph preview, proxies under `src/app/api`.
+- Shared caps/limits: keep `SAMPLE_DOC_LIMIT` and `COMPETITOR_DISPLAY_CAP` in sync between `backend/src/constants.py` and `frontend/src/lib/constants.ts`.
 
 ## Getting Started
 
