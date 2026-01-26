@@ -7,6 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from src.agent import run_agent
 from src.config import Config
 from src.services.graph_queries import fetch_competitors, fetch_entity_profile
+from src.constants import COMPETITOR_DISPLAY_CAP
 
 def build_profile_prompt(company: str) -> str:
     return (
@@ -66,7 +67,7 @@ async def run_competitor_flow(company: str, thread_id: str | None) -> tuple[Any,
         run_in_threadpool(fetch_competitors, company),
         timeout=8,
     )
-    competitors_list = filter_competitors(competitors)
+    competitors_list = filter_competitors(competitors)[:COMPETITOR_DISPLAY_CAP]
 
     if not competitors_list:
         await asyncio.wait_for(
@@ -77,7 +78,7 @@ async def run_competitor_flow(company: str, thread_id: str | None) -> tuple[Any,
             run_in_threadpool(fetch_competitors, company),
             timeout=8,
         )
-        competitors_list = filter_competitors(competitors)
+        competitors_list = filter_competitors(competitors)[:COMPETITOR_DISPLAY_CAP]
 
     return result, competitors_list
 
