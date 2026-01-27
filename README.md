@@ -45,7 +45,7 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 ## Docker
 - Backend: `docker build -t gotham-backend ./backend` (listens on 8000)
 - Frontend: `docker build -t gotham-frontend ./frontend` (runs `npm start` for prod build on 3000)
-- (Add docker-compose if you want a single `docker compose up`.)
+- Compose: `docker compose up` brings up Neo4j, backend (8000), and frontend (3000) with `API_BASE=http://backend:8000`.
 
 ## Env
 - Backend `.env`: LLM keys, Neo4j URI/user/pass.
