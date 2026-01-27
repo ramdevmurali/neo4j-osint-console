@@ -65,8 +65,9 @@ cd frontend && npm run lint
 - Mood fetch is opt-in (reduces latency).
 
 ## Demo (add your media)
-- Mission console before/after: _insert screenshot/gif link_
-- Graph preview: _insert screenshot/gif link_
+- Mission console – competitors view (Dyson): _insert image link_
+- Mission console – mood view (Dyson): _insert image link_
+- Sample graph preview: _insert image link_
 - Optional video link (YouTube/Loom): _insert link_
 
 ## Known limitations
