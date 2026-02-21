@@ -4,15 +4,15 @@ import MissionConsole from "@/components/layout/mission-console";
 import Pill from "@/components/ui/pill";
 import StatCard from "@/components/ui/stat-card";
 import ThemeToggle from "@/components/ui/theme-toggle";
-import GraphPreview from "@/components/ui/graph-preview";
+import GraphPreview, { type GraphEdge, type GraphNode } from "@/components/ui/graph-preview";
 import { missionHighlights, stats as staticStats } from "@/lib/content";
 import { useEffect, useState } from "react";
 import { fetchJson } from "@/lib/fetcher";
 import { SAMPLE_DOC_LIMIT } from "@/lib/constants";
 
 type GraphSample = {
-  nodes?: unknown[];
-  edges?: unknown[];
+  nodes?: GraphNode[];
+  edges?: GraphEdge[];
   node_count?: number;
   edge_count?: number;
   documents?: { url?: string }[];
@@ -27,8 +27,8 @@ export default function Home() {
   } | null>(null);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
-  const [graphNodes, setGraphNodes] = useState<unknown[]>([]);
-  const [graphEdges, setGraphEdges] = useState<unknown[]>([]);
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
   const [showGraph, setShowGraph] = useState(false);
   const [stats, setStats] = useState(staticStats);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -64,9 +64,10 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(`Backend responded ${response.status}`);
       }
+      const graphData: GraphSample = data && typeof data === "object" ? (data as GraphSample) : {};
       const names: string[] = [];
-      if (Array.isArray(data.nodes)) {
-        for (const node of data.nodes.slice(0, SAMPLE_DOC_LIMIT)) {
+      if (Array.isArray(graphData.nodes)) {
+        for (const node of graphData.nodes.slice(0, SAMPLE_DOC_LIMIT)) {
           if (node && typeof node === "object" && "name" in node) {
             const name = String((node as { name?: unknown }).name ?? "");
             if (name) names.push(name);
@@ -74,13 +75,13 @@ export default function Home() {
         }
       }
       setSampleSummary({
-        node_count: data.node_count ?? 0,
-        edge_count: data.edge_count ?? 0,
+        node_count: graphData.node_count ?? 0,
+        edge_count: graphData.edge_count ?? 0,
         sample_nodes: names,
-        documents: Array.isArray(data.documents) ? data.documents : [],
+        documents: Array.isArray(graphData.documents) ? graphData.documents : [],
       });
-      setGraphNodes(Array.isArray(data.nodes) ? data.nodes : []);
-      setGraphEdges(Array.isArray(data.edges) ? data.edges : []);
+      setGraphNodes(Array.isArray(graphData.nodes) ? graphData.nodes : []);
+      setGraphEdges(Array.isArray(graphData.edges) ? graphData.edges : []);
       setShowGraph(true);
     } catch {
       // Keep any prior graph visible; only show a friendly message.

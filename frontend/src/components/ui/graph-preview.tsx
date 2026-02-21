@@ -130,8 +130,8 @@ export default function GraphPreview({ nodes, edges, height = 360 }: GraphPrevie
         nodeRelSize={6}
         linkColor={() => "rgba(125, 0, 6, 0.35)"}
         linkWidth={1}
-        enableZoomPanInteraction={true}
-        zoomToFit={false}
+        enableZoomInteraction={true}
+        enablePanInteraction={true}
         minZoom={0.6}
         maxZoom={2.5}
         backgroundColor="transparent"
