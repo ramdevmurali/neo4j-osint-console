@@ -25,7 +25,7 @@ Turn open-source signals into a living knowledge graph (Neo4j). Submit a company
 - Quick demo flow: enter a company → dispatch mission → view competitors/mood → open sample graph.
 
 ## Running locally
-Prereqs: Python 3.11+, Node 18+
+Prereqs: Python 3.11+, Node 20+
 
 Backend
 ```bash
@@ -45,11 +45,15 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 ## Docker
 - Backend: `docker build -t gotham-backend ./backend` (listens on 8000)
 - Frontend: `docker build -t gotham-frontend ./frontend` (runs `npm start` for prod build on 3000)
-- Compose: `docker compose up` brings up Neo4j, backend (8000), and frontend (3000) with `API_BASE=http://backend:8000`.
+- Compose: `docker compose up --build -d` brings up Neo4j, backend (8000), and frontend (3000) with health-gated startup and `API_BASE=http://backend:8000`.
 
 ## Env
 - Backend `.env`: LLM keys, Neo4j URI/user/pass.
-- Frontend proxies to backend at `http://localhost:8000` by default (see `frontend/src/app/api/*`). Override via `API_BASE` in those routes if needed.
+- In compose, backend is forced to local Neo4j via `NEO4J_URI=bolt://neo4j:7687` (so app traffic stays inside the compose network).
+- Frontend API proxy base is resolved in `frontend/src/lib/config.ts`:
+  - `API_BASE` (preferred, used in compose)
+  - `NEXT_PUBLIC_API_BASE`
+  - fallback `http://localhost:8000`
 - Data sources: LLM search via Gemini + Tavily; bring your own API keys.
 
 ## Tests & lint
